@@ -9,12 +9,28 @@ git clone https://github.com/alijayanet/webportal
 ```
 cd webportal
 ```
+# CATATAN
+edit file env example sesuai dengan server anda <br>
+
+PORT=3500 //sesuaikan dengan port yang ada supaya jangan bentrok <br>
+GENIEACS_URL=http://192.168.8.xx:7557 //ip server acs <br>
+GENIEACS_USERNAME=admin //user login acs <br>
+GENIEACS_PASSWORD=admin //pass login acs <br>
+
+# Admin Configuration <br>
+ADMIN_USERNAME=admin <br>
+ADMIN_PASSWORD=admin<br>
+
+lalu di rename menjadi .env <br>
+
 ```
 npm install
 ```
 ```
 node app.js
 ```
+
+
 🤝 Kontribusi
 Kontribusi selalu diterima! Silakan buat pull request atau laporkan issue jika menemukan bug.
 
