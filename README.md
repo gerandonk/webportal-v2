@@ -1,5 +1,5 @@
 # webportal
-# Usage
+
 ```
 apt install git curl -y
 ```
@@ -9,10 +9,10 @@ git clone https://github.com/alijayanet/webportal
 ```
 cd webportal
 ```
-# CATATAN
+CATATAN <br>
 edit file env example sesuai dengan server anda <br>
 
-PORT=3500 //sesuaikan dengan port yang ada supaya jangan bentrok <br>
+PORT=3500  <br>
 GENIEACS_URL=http://192.168.8.xx:7557 //ip server acs <br>
 GENIEACS_USERNAME=admin //user login acs <br>
 GENIEACS_PASSWORD=admin //pass login acs <br>
