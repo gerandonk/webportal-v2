@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 400px;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2 class="text-center mb-4">
+            <i class="fas fa-user-shield me-2"></i>Admin Login
+        </h2>
+        <p id="trial-notification" style="color: red; display: none; text-align: center;">Aplikasi ini masih dalam mode TRIAL. Hubungi 081947215703 untuk versi PRO.</p>
+
+        <% if (error) { %>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <%= error %>
+            </div>
+        <% } %>
+
+        <form id="admin-login-form" action="/admin/login" method="POST">
+            <div class="mb-3">
+                <input type="text" class="form-control" name="username" placeholder="Username" required>
+            </div>
+            <div class="mb-3">
+                <input type="password" class="form-control" name="password" placeholder="Password" required>
+            </div>
+            <input type="text" id="token-input" class="form-control" placeholder="Masukkan TOKEN" required>
+            <button type="button" class="btn btn-primary w-100 mt-3" onclick="validateToken()">Login</button>
+        </form>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!localStorage.getItem('isProUser')) {
+                document.getElementById('trial-notification').style.display = 'block';
+            }
+        });
+
+        function validateToken() {
+            const token = document.getElementById('token-input').value;
+            if (token === 'alijaya060111') {
+                localStorage.setItem('isProUser', true);
+                alert('TOKEN valid! Anda sekarang pengguna PRO.');
+                document.getElementById('trial-notification').style.display = 'none';
+                document.getElementById('admin-login-form').submit();
+            } else {
+                alert('TOKEN tidak valid. Silakan coba lagi.');
+            }
+        }
+    </script>
+</body>
+</html>

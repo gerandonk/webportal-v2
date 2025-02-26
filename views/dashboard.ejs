@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ONT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-wifi me-2"></i>ONT Manager
+            </a>
+            <div class="ms-auto">
+                <a href="/logout" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row">
+            <!-- Status Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="status-icon mb-3" style="background-color: <%= deviceData.statusColor %>">
+                            <i class="fas fa-signal"></i>
+                        </div>
+                        <h5 class="card-title mb-1"><%= deviceData.statusLabel %></h5>
+                        <p class="text-muted small mb-0">Last Inform: <%= deviceData.lastInform %></p>
+                        <button id="refreshButton" class="btn btn-refresh mt-3" onclick="refreshDevice()">
+                            <i class="fas fa-sync-alt me-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Info Card -->
+            <div class="col-md-8 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-server me-2"></i>Device Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Model</label>
+                                    <div class="value"><%= deviceData.model %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Serial Number</label>
+                                    <div class="value"><%= deviceData.serialNumber %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>PPPoE Username</label>
+                                    <div class="value"><%= deviceData.pppUsername %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>MAC Address</label>
+                                    <div class="value"><%= deviceData.pppMac %></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Network Stats -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Network Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>RX Power</label>
+                                <div class="value"><%= deviceData.rxPower %> dBm</div>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>Uptime</label>
+                                <div class="value"><%= deviceData.uptime %></div>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>Connected Users</label>
+                                <div class="value"><%= deviceData.userConnected %></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WiFi Settings -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-wifi me-2"></i>WiFi Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- SSID Form -->
+                        <form id="updateSsidForm" class="mb-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label">SSID</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="ssid" name="ssid" value="<%= deviceData.ssid %>">
+                                    <button type="submit" class="btn btn-primary" id="updateSsidButton">
+                                        <i class="fas fa-save me-1"></i>Update
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Password Form -->
+                        <form id="passwordForm">
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" minlength="8">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="submit" class="btn btn-primary" id="updatePasswordButton">
+                                        <i class="fas fa-save me-1"></i>Update
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle Password Visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+
+        // Update SSID Form Handler
+        document.getElementById('updateSsidForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const ssidInput = document.getElementById('ssid');
+            const updateButton = document.getElementById('updateSsidButton');
+            const originalButtonText = updateButton.innerHTML;
+            
+            try {
+                // Disable form elements
+                ssidInput.disabled = true;
+                updateButton.disabled = true;
+                updateButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+                
+                const response = await fetch('/update-wifi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ssid: ssidInput.value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show success message
+                    const toast = document.createElement('div');
+                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+                    toast.style.zIndex = '1050';
+                    toast.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        SSID berhasil diupdate
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Remove toast after 3 seconds
+                    setTimeout(() => {
+                        toast.remove();
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    throw new Error(data.message || 'Gagal mengupdate SSID');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat mengupdate SSID: ' + error.message);
+            } finally {
+                // Re-enable form elements
+                ssidInput.disabled = false;
+                updateButton.disabled = false;
+                updateButton.innerHTML = originalButtonText;
+            }
+        });
+
+        // Password Form Submit Handler
+        document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const passwordInput = document.getElementById('password');
+            const updateButton = document.getElementById('updatePasswordButton');
+            const originalButtonText = updateButton.innerHTML;
+            
+            try {
+                // Validate password
+                if (passwordInput.value.length < 8) {
+                    throw new Error('Password harus minimal 8 karakter');
+                }
+
+                // Disable form elements
+                passwordInput.disabled = true;
+                updateButton.disabled = true;
+                updateButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+                
+                const response = await fetch('/update-wifi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show success message
+                    const toast = document.createElement('div');
+                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+                    toast.style.zIndex = '1050';
+                    toast.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        Password berhasil diupdate
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Clear password input
+                    passwordInput.value = '';
+                    
+                    // Remove toast after 3 seconds
+                    setTimeout(() => {
+                        toast.remove();
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    throw new Error(data.message || 'Gagal mengupdate password');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat mengupdate password: ' + error.message);
+            } finally {
+                // Re-enable form elements
+                passwordInput.disabled = false;
+                updateButton.disabled = false;
+                updateButton.innerHTML = originalButtonText;
+            }
+        });
+
+        // Auto refresh setiap 5 menit
+        let autoRefreshInterval = setInterval(refreshDevice, 300000);
+
+        // Reset interval saat user manual refresh
+        document.getElementById('refreshButton').addEventListener('click', () => {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(refreshDevice, 300000);
+        });
+
+        // Cleanup interval saat user meninggalkan halaman
+        window.addEventListener('beforeunload', () => {
+            clearInterval(autoRefreshInterval);
+        });
+
+        async function refreshDevice() {
+            const refreshButton = document.getElementById('refreshButton');
+            const originalContent = refreshButton.innerHTML;
+            
+            try {
+                // Disable button dan tampilkan loading
+                refreshButton.disabled = true;
+                refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
+                
+                // Kirim request refresh
+                const response = await fetch('/refresh-device', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Tampilkan toast notification
+                    const toast = document.createElement('div');
+                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+                    toast.style.zIndex = '1050';
+                    toast.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        Data berhasil di-refresh
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Hapus toast setelah 3 detik
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 3000);
+                    
+                    // Reload halaman
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Gagal me-refresh data');
+                }
+            } catch (error) {
+                console.error('Refresh error:', error);
+                alert('Terjadi kesalahan saat me-refresh data: ' + error.message);
+            } finally {
+                // Kembalikan button ke kondisi awal
+                if (refreshButton) {
+                    refreshButton.disabled = false;
+                    refreshButton.innerHTML = originalContent;
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Tambahkan style untuk toast */
+        .alert {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Style untuk button refresh */
+        .btn-refresh {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            transition: all 0.2s ease;
+        }
+
+        .btn-refresh:hover {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+
+        .btn-refresh:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        /* Animasi spin untuk icon */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .fa-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</body>
+</html>
