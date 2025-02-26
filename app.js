@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const axios = require('axios');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -15,6 +16,13 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }));
+
+const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
+
+// Initialize pro status file if it doesn't exist
+if (!fs.existsSync(PRO_STATUS_FILE)) {
+    fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify({}));
+}
 
 // Set view engine
 app.set('view engine', 'ejs');
@@ -857,6 +865,25 @@ app.post('/admin/refresh-all', async (req, res) => {
             message: 'Failed to refresh devices: ' + error.message 
         });
     }
+});
+
+// Endpoint to save PRO status
+app.post('/set-pro-status', (req, res) => {
+    const { token } = req.body;
+    if (token === 'alijaya060111') {
+        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
+        proStatus.isPro = true;
+        fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ success: false });
+    }
+});
+
+// Endpoint to check PRO status
+app.get('/check-pro-status', (req, res) => {
+    const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
+    res.json({ isPro: proStatus.isPro || false });
 });
 
 const PORT = process.env.PORT || 3000;
