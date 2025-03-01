@@ -34,6 +34,12 @@ http://192.168.8.xx:3500/admin <br>
 untuk pelanggan <br>
 http://192.168.8.xx:3500 <br>
 
+demo
+
+https://web.gantiwifi.online  // nopel 081321960111
+
+https://web.gantiwifi.online // user admin pass admin
+
 🤝 Kontribusi
 Kontribusi selalu diterima! Silakan buat pull request atau laporkan issue jika menemukan bug.
 
