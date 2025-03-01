@@ -5,7 +5,7 @@ const axios = require('axios');
 const fs = require('fs');
 require('dotenv').config();
 
-// Fungsi untuk decode token
+// apa ya embuh ah
 function decodeToken(encoded) {
     return Buffer.from(encoded, 'base64').toString('utf-8');
 }
