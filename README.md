@@ -30,9 +30,9 @@ npm install
 node app.js
 ```
 untuk membuka aplikasi admin <br>
-http://192.168.8.xx:3500/admin <br>
+http://192.168.8.xx:4000/admin <br>
 untuk pelanggan <br>
-http://192.168.8.xx:3500 <br>
+http://192.168.8.xx:4000 <br>
 
 demo
 
