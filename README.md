@@ -12,7 +12,7 @@ cd webportal
 CATATAN <br>
 edit file env example sesuai dengan server anda <br>
 
-PORT=3500  <br>
+PORT=4000  <br>
 GENIEACS_URL=http://192.168.8.xx:7557 //ip server acs <br>
 GENIEACS_USERNAME=admin //user login acs <br>
 GENIEACS_PASSWORD=admin //pass login acs <br>
