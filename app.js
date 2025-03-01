@@ -696,11 +696,9 @@ app.post('/admin/refresh-device/:deviceId', async (req, res) => {
 
         // Construct GenieACS URLs
         const baseUrl = process.env.GENIEACS_URL.replace(/\/$/, ''); // Remove trailing slash if exists
-        const refreshUrl = `${baseUrl}/devices/${originalDeviceId}/tasks`;
-        const connectionUrl = `${baseUrl}/devices/${originalDeviceId}/tasks?connection_request`;
+        const refreshUrl = `${baseUrl}/devices/${originalDeviceId}/tasks?connection_request`;
 
         console.log('Refresh URL:', refreshUrl);
-        console.log('Connection URL:', connectionUrl);
 
         // Verify device exists first
         try {
@@ -717,42 +715,32 @@ app.post('/admin/refresh-device/:deviceId', async (req, res) => {
 
             console.log('Device found in GenieACS');
 
+            // Encode device ID properly for URL
+            const encodedDeviceId = encodeURIComponent(originalDeviceId);
+            console.log('Encoded deviceId:', encodedDeviceId);
+
             // Send refresh task
-            const refreshResponse = await axios.post(
-                refreshUrl,
-                {
-                    name: "refreshObject",
-                    objectName: ""
+            const taskResponse = await axios({
+                method: 'POST',
+                url: `${baseUrl}/devices/${encodedDeviceId}/tasks`,
+                data: {
+                    name: "setParameterValues",
+                    parameterValues: [["InternetGatewayDevice.ManagementServer.PeriodicInformEnable", "1", "xsd:boolean"]]
                 },
-                {
-                    auth: {
-                        username: process.env.GENIEACS_USERNAME,
-                        password: process.env.GENIEACS_PASSWORD
-                    },
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                auth: {
+                    username: process.env.GENIEACS_USERNAME,
+                    password: process.env.GENIEACS_PASSWORD
+                },
+                headers: {
+                    'Content-Type': 'application/json'
                 }
-            );
+            });
 
-            console.log('Refresh task response:', refreshResponse.status);
-
-            // Send connection request
-            const connectionResponse = await axios.post(
-                connectionUrl,
-                {},
-                {
-                    auth: {
-                        username: process.env.GENIEACS_USERNAME,
-                        password: process.env.GENIEACS_PASSWORD
-                    },
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            console.log('Connection request response:', connectionResponse.status);
+            console.log('Task response:', {
+                status: taskResponse.status,
+                data: taskResponse.data,
+                url: taskResponse.config.url
+            });
 
             // Wait for tasks to be processed
             await new Promise(resolve => setTimeout(resolve, 3000));
@@ -811,32 +799,36 @@ app.post('/admin/refresh-all', async (req, res) => {
 
         const refreshPromises = response.data.map(async (device) => {
             try {
-                // Kirim refresh task
-                await axios.post(
-                    `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(device._id)}/tasks`,
-                    {
-                        name: "refreshObject",
-                        objectName: ""
-                    },
-                    {
-                        auth: {
-                            username: process.env.GENIEACS_USERNAME,
-                            password: process.env.GENIEACS_PASSWORD
-                        }
-                    }
-                );
+                // Encode device ID properly for URL
+                const encodedDeviceId = encodeURIComponent(device._id);
+                console.log('Processing device:', {
+                    original: device._id,
+                    encoded: encodedDeviceId
+                });
 
-                // Kirim connection request
-                await axios.post(
-                    `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(device._id)}/tasks?connection_request`,
-                    {},
-                    {
-                        auth: {
-                            username: process.env.GENIEACS_USERNAME,
-                            password: process.env.GENIEACS_PASSWORD
-                        }
+                // Send refresh task
+                const result = await axios({
+                    method: 'POST',
+                    url: `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`,
+                    data: {
+                        name: "setParameterValues",
+                        parameterValues: [["InternetGatewayDevice.ManagementServer.PeriodicInformEnable", "1", "xsd:boolean"]]
+                    },
+                    auth: {
+                        username: process.env.GENIEACS_USERNAME,
+                        password: process.env.GENIEACS_PASSWORD
+                    },
+                    headers: {
+                        'Content-Type': 'application/json'
                     }
-                );
+                });
+
+                console.log('Device refresh result:', {
+                    deviceId: device._id,
+                    status: result.status,
+                    data: result.data,
+                    url: result.config.url
+                });
 
                 return { deviceId: device._id, success: true };
             } catch (error) {
