@@ -5,6 +5,13 @@ const axios = require('axios');
 const fs = require('fs');
 require('dotenv').config();
 
+// Fungsi untuk decode token
+function decodeToken(encoded) {
+    return Buffer.from(encoded, 'base64').toString('utf-8');
+}
+
+const PRO_TOKEN_ENCODED = 'd2VicG9ydGFsMjAyNQ=='; // Token terenkripsi
+
 const app = express();
 
 // Middleware
@@ -862,7 +869,7 @@ app.post('/admin/refresh-all', async (req, res) => {
 // Endpoint to save PRO status
 app.post('/set-pro-status', (req, res) => {
     const { token } = req.body;
-    if (token === 'alijaya060111') {
+    if (token === decodeToken(PRO_TOKEN_ENCODED)) {
         const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
         proStatus.isPro = true;
         fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
@@ -872,7 +879,7 @@ app.post('/set-pro-status', (req, res) => {
     }
 });
 
-// Endpoint to check PRO status
+// Endpoint untuk memeriksa status PRO
 app.get('/check-pro-status', (req, res) => {
     const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
     res.json({ isPro: proStatus.isPro || false });
