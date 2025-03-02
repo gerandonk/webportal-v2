@@ -26,16 +26,16 @@ function isActivated() {
     }
 }
 
-// Fungsi utama
+// Fungsi untuk memverifikasi token
 function verifyToken(inputToken) {
     try {
-        // Genesi biru
+        // Generate hash dari input token
         const hash = crypto.createHash('sha512');
-        const salt = 'S3cur3S@lt!2025'; 
+        const salt = 'S3cur3S@lt!2025'; // Salt statis untuk konsistensi
         hash.update(inputToken + salt);
         const hashedInput = hash.digest('hex');
 
-        // Hasilnya
+        // Hash dari token yang benar (pre-computed dari 'alijaya060111')
         const validHash = 'c2142c0c7ad0b44717d70d1365372bc02a4645cb682c4e5d4a4497717ac79a1f49211014032b6ceb0138b7dcce6b355b021fca04c7e2ec22534a06492e500359';
         
         // Bandingkan hash dengan timing-safe comparison
@@ -70,8 +70,7 @@ app.use((req, res, next) => {
     if (req.path === '/activate' || 
         req.path === '/verify-token' || 
         req.path === '/admin-login' ||
-        req.path === '/login' ||
-        req.path === '/' ||
+        req.path === '/admin/login' ||
         req.path.startsWith('/public/')) {
         return next();
     }
@@ -86,7 +85,7 @@ app.use((req, res, next) => {
 // Halaman aktivasi
 app.get('/activate', (req, res) => {
     if (isActivated()) {
-        return res.redirect('/admin-login');
+        return res.redirect('/');
     }
     res.render('activate', { error: null });
 });
@@ -105,26 +104,44 @@ app.post('/verify-token', (req, res) => {
         proStatus.isPro = true;
         proStatus.activatedAt = new Date().toISOString();
         fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
-        res.json({ success: true, message: 'Aktivasi berhasil', redirectTo: '/admin-login' });
+        res.json({ success: true, message: 'Aktivasi berhasil' });
     } else {
         res.status(403).json({ success: false, message: 'Token tidak valid' });
     }
 });
 
-// Routes
+// Routes untuk customer
 app.get('/', (req, res) => {
     if (!isActivated()) {
         return res.redirect('/activate');
     }
-    res.redirect('/admin-login');
+    res.render('login', { error: null });
+});
+
+app.get('/login', (req, res) => {
+    if (!isActivated()) {
+        return res.redirect('/activate');
+    }
+    res.render('login', { error: null });
+});
+
+// Routes untuk admin
+app.get('/admin', (req, res) => {
+    if (!isActivated()) {
+        return res.redirect('/activate');
+    }
+    if (!req.session.isAdmin) {
+        return res.redirect('/admin-login');
+    }
+    res.render('admin', { error: null });
 });
 
 app.get('/admin-login', (req, res) => {
-    if (req.session.isAdmin) {
-        return res.redirect('/admin');
-    }
     if (!isActivated()) {
         return res.redirect('/activate');
+    }
+    if (req.session.isAdmin) {
+        return res.redirect('/admin');
     }
     res.render('admin-login', { error: null });
 });
@@ -139,18 +156,6 @@ app.post('/admin/login', (req, res) => {
     } else {
         res.render('admin-login', { error: 'Username atau password salah' });
     }
-});
-
-app.get('/login', (req, res) => {
-    res.render('login', { error: null });
-});
-
-app.get('/verify-otp', (req, res) => {
-    // Redirect ke login jika tidak ada username
-    if (!req.query.username) {
-        return res.redirect('/login');
-    }
-    res.render('verify-otp', { username: req.query.username, error: null });
 });
 
 // Fungsi untuk generate OTP

@@ -54,9 +54,9 @@
                 if (data.success) {
                     messageDiv.className = 'mt-3 text-center text-success';
                     messageDiv.textContent = data.message;
-                    // Redirect ke halaman admin setelah aktivasi berhasil
+                    // Redirect ke halaman login setelah aktivasi berhasil
                     setTimeout(() => {
-                        window.location.href = data.redirectTo || '/admin-login';
+                        window.location.href = '/login';
                     }, 1500);
                 } else {
                     messageDiv.className = 'mt-3 text-center text-danger';
