@@ -12,14 +12,23 @@ cd webportal
 CATATAN <br>
 edit file env example sesuai dengan server anda <br>
 
-PORT=4000  <br>
-GENIEACS_URL=http://192.168.8.xx:7557 //ip server acs <br>
-GENIEACS_USERNAME=admin //user login acs <br>
-GENIEACS_PASSWORD=admin //pass login acs <br>
+PORT=4000 // port webportal
 
-Admin Configuration <br>
-ADMIN_USERNAME=admin <br>
-ADMIN_PASSWORD=admin <br>
+# GenieACS Configuration
+GENIEACS_URL=http://192.168.8.xxx:7557 // url GenieACS API
+GENIEACS_USERNAME=admin // username GenieACS
+GENIEACS_PASSWORD=admin // password GenieACS
+
+# Admin Configuration
+ADMIN_USERNAME=admin // username admin
+ADMIN_PASSWORD=admin // password admin
+
+# Fonnte WhatsApp Gateway
+FONNTE_TOKEN=wik2cbw4xxxxxxxxxxxxxxxxxxxx   // token Fonnte WhatsApp Gateway
+ADMIN_WHATSAPP=628782xxxxxxx // nomor WhatsApp admin
+
+# OTP Configuration
+OTP_ENABLED=false // jika ingin menggunakan OTP, silakan set menjadi true
 
 lalu di rename menjadi .env <br>
 
