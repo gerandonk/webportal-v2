@@ -1,8 +1,17 @@
-PORT=4000
-GENIEACS_URL=http://192.168.8.89:7557
-GENIEACS_USERNAME=admin
-GENIEACS_PASSWORD=admin
+PORT=4000    // port webportal
+
+# GenieACS Configuration
+GENIEACS_URL=http://192.168.8.xxx:7557    // url GenieACS API
+GENIEACS_USERNAME=admin    // username GenieACS
+GENIEACS_PASSWORD=admin    // password GenieACS
 
 # Admin Configuration
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin
+ADMIN_USERNAME=admin    // username admin
+ADMIN_PASSWORD=admin    // password admin
+
+# Fonnte WhatsApp Gateway
+FONNTE_TOKEN=wik2cbw4xxxxxxxxxxxxxxxxxxxx   // token Fonnte WhatsApp Gateway
+ADMIN_WHATSAPP=628782xxxxxxx    // nomor WhatsApp admin
+
+# OTP Configuration
+OTP_ENABLED=false    // jika ingin menggunakan OTP, silakan set menjadi true
