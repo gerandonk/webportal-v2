@@ -45,9 +45,9 @@ http://192.168.8.xx:4000 <br>
 
 demo
 
-https://web.gantiwifi.online  // nopel 081321960111
+https://portal.gantiwifi.online  // nopel 081321960111
 
-https://web.gantiwifi.online/admin // user admin pass admin
+https://portal.gantiwifi.online/admin // user admin pass admin
 
 🤝 Kontribusi
 Kontribusi selalu diterima! Silakan buat pull request atau laporkan issue jika menemukan bug.
