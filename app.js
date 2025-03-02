@@ -10,7 +10,7 @@ function decodeToken(encoded) {
     return Buffer.from(encoded, 'base64').toString('utf-8');
 }
 
-const PRO_TOKEN_ENCODED = 'd2VicG9ydGFsMjAyNQ=='; // Token terenkripsi
+const PRO_TOKEN_ENCODED = 'd2VicG9ydGFsMjAyNQ=='; 
 
 const app = express();
 
