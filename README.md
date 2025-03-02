@@ -47,8 +47,6 @@ demo
 
 https://portal.gantiwifi.online  // nopel 081321960111
 
-https://portal.gantiwifi.online/admin // user admin pass admin
-
 🤝 Kontribusi
 Kontribusi selalu diterima! Silakan buat pull request atau laporkan issue jika menemukan bug.
 
