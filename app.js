@@ -391,6 +391,8 @@ app.get('/dashboard', async (req, res) => {
 
         // Get device data
         const deviceData = {
+            _id: device._id,
+            _tags: device._tags || [],
             username: req.session.username,
             model: model,
             serialNumber: serialNumber,
@@ -567,8 +569,8 @@ function encodeDeviceId(deviceId) {
 // Update SSID endpoint
 app.post('/update-wifi', async (req, res) => {
     try {
-        const { ssid, password } = req.body;
-        const deviceId = req.session.deviceId;
+        const { ssid, password, deviceId: requestDeviceId } = req.body;
+        const deviceId = requestDeviceId || req.session.deviceId; // Use deviceId from request if provided, otherwise from session
 
         console.log('Update WiFi Request:', {
             deviceId,
@@ -578,6 +580,11 @@ app.post('/update-wifi', async (req, res) => {
 
         if (!deviceId) {
             throw new Error('Device ID tidak valid');
+        }
+
+        // Jika deviceId dari request, pastikan user adalah admin
+        if (requestDeviceId && !req.session.isAdmin) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
         // Cek device terlebih dahulu
@@ -744,6 +751,7 @@ app.get('/admin', async (req, res) => {
 
             return {
                 _id: device._id,
+                _tags: device._tags || [],
                 online: isOnline,
                 lastInform: device._lastInform || new Date(),
                 pppUsername: getParameterWithPaths(device, parameterPaths.pppUsername) || 'Unknown',
@@ -751,7 +759,9 @@ app.get('/admin', async (req, res) => {
                 rxPower: getParameterWithPaths(device, parameterPaths.rxPower) || 'N/A',
                 model: getParameterWithPaths(device, parameterPaths.productClass) || 'N/A',
                 serialNumber: getParameterWithPaths(device, parameterPaths.serialNumber) || 'N/A',
-                connectedDevices: connectedDevices
+                ssid: getParameterWithPaths(device, parameterPaths.ssid) || '',
+                connectedDevices: connectedDevices,
+                mac: getParameterWithPaths(device, [...parameterPaths.pppMac, ...parameterPaths.pppMacWildcard]) || 'N/A'
             };
         });
 

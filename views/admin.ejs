@@ -126,6 +126,28 @@
                 opacity: 1;
             }
         }
+
+        /* Style untuk form WiFi settings */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-label {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-bottom: 0.25rem;
+        }
+        .input-group .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.375rem 0.75rem;
+        }
+        .input-group .btn i {
+            font-size: 0.875rem;
+        }
+        .btn-outline-secondary:hover {
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 <body>
@@ -245,33 +267,61 @@
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-6">
-                                        <small class="text-muted d-block">IP Address</small>
-                                        <span><%= device.pppoeIP || 'N/A' %></span>
+                                        <div class="info-group">
+                                            <label>Model</label>
+                                            <div class="value"><%= device.model || 'N/A' %></div>
+                                        </div>
                                     </div>
                                     <div class="col-6">
-                                        <small class="text-muted d-block">RX Power</small>
-                                        <span class="<%= getRxPowerClass(device.rxPower) %>">
-                                            <%= device.rxPower || 'N/A' %> dBm
-                                        </span>
+                                        <div class="info-group">
+                                            <label>Serial Number</label>
+                                            <div class="value"><%= device.serialNumber || 'N/A' %></div>
+                                        </div>
                                     </div>
                                     <div class="col-6">
-                                        <small class="text-muted d-block">Model</small>
-                                        <span><%= device.model || 'N/A' %></span>
+                                        <div class="info-group">
+                                            <label>Customer Number</label>
+                                            <div class="value"><%= device._tags ? device._tags.find(tag => /^\d+$/.test(tag)) || 'N/A' : 'N/A' %></div>
+                                        </div>
                                     </div>
                                     <div class="col-6">
-                                        <small class="text-muted d-block">Serial Number</small>
-                                        <span><%= device.serialNumber || 'N/A' %></span>
+                                        <div class="info-group">
+                                            <label>MAC Address</label>
+                                            <div class="value"><%= device.mac || 'N/A' %></div>
+                                        </div>
                                     </div>
-                                    <div class="col-6">
-                                        <small class="text-muted d-block">Connected Devices</small>
-                                        <span>
-                                            <i class="fas fa-users me-1"></i>
-                                            <%= device.connectedDevices %> devices
-                                        </span>
-                                    </div>
-                                    <div class="col-6">
-                                        <small class="text-muted d-block">Last Inform</small>
-                                        <span><%= new Date(device.lastInform).toLocaleString() %></span>
+                                    <!-- WiFi Settings -->
+                                    <div class="col-12">
+                                        <hr>
+                                        <h6 class="mb-3"><i class="fas fa-wifi me-2"></i>WiFi Settings</h6>
+                                        <!-- SSID Form -->
+                                        <form class="update-ssid-form mb-3" data-device-id="<%= device._id %>">
+                                            <div class="form-group">
+                                                <label class="form-label">SSID</label>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" name="ssid" value="<%= device.ssid || '' %>" required>
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-save me-1"></i>Update
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+
+                                        <!-- Password Form -->
+                                        <form class="update-password-form" data-device-id="<%= device._id %>">
+                                            <div class="form-group">
+                                                <label class="form-label">Password</label>
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control wifi-password" name="password" minlength="8" placeholder="Enter new password">
+                                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-save me-1"></i>Update
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -485,6 +535,147 @@
                 }
             });
         });
+
+        // Toggle Password Visibility
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', function() {
+                const passwordInput = this.closest('.input-group').querySelector('.wifi-password');
+                const eyeIcon = this.querySelector('i');
+                
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    eyeIcon.classList.remove('fa-eye');
+                    eyeIcon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    eyeIcon.classList.remove('fa-eye-slash');
+                    eyeIcon.classList.add('fa-eye');
+                }
+            });
+        });
+
+        // Update SSID Form Handler
+        document.querySelectorAll('.update-ssid-form').forEach(form => {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const deviceId = this.dataset.deviceId;
+                const ssidInput = this.querySelector('input[name="ssid"]');
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalButtonText = submitButton.innerHTML;
+                
+                try {
+                    // Disable form elements
+                    ssidInput.disabled = true;
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+                    
+                    const response = await fetch('/update-wifi', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            deviceId: deviceId,
+                            ssid: ssidInput.value
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    // Tampilkan alert
+                    showAlert(data.success ? 'success' : 'danger', data.message);
+                    
+                    // Refresh device data jika berhasil
+                    if (data.success) {
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    }
+                } catch (error) {
+                    console.error('Update SSID error:', error);
+                    showAlert('danger', 'Gagal mengupdate SSID');
+                } finally {
+                    // Enable form elements
+                    ssidInput.disabled = false;
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
+            });
+        });
+
+        // Update Password Form Handler
+        document.querySelectorAll('.update-password-form').forEach(form => {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const deviceId = this.dataset.deviceId;
+                const passwordInput = this.querySelector('input[name="password"]');
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalButtonText = submitButton.innerHTML;
+                
+                try {
+                    // Validate password
+                    if (passwordInput.value.length < 8) {
+                        showAlert('danger', 'Password harus minimal 8 karakter');
+                        return;
+                    }
+                    
+                    // Disable form elements
+                    passwordInput.disabled = true;
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+                    
+                    const response = await fetch('/update-wifi-password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            deviceId: deviceId,
+                            password: passwordInput.value
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    // Tampilkan alert
+                    showAlert(data.success ? 'success' : 'danger', data.message);
+                    
+                    // Clear password input jika berhasil
+                    if (data.success) {
+                        passwordInput.value = '';
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    }
+                } catch (error) {
+                    console.error('Update password error:', error);
+                    showAlert('danger', 'Gagal mengupdate password');
+                } finally {
+                    // Enable form elements
+                    passwordInput.disabled = false;
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
+            });
+        });
+
+        // Helper function untuk menampilkan alert
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
     </script>
 </body>
 </html>
