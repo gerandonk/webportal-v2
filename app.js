@@ -1060,6 +1060,40 @@ app.get('/check-pro-status', (req, res) => {
     res.json({ isPro: proStatus.isPro || false });
 });
 
+// Endpoint untuk reboot device
+app.post('/reboot-device', async (req, res) => {
+    const { deviceId } = req.body;
+    
+    try {
+        // Log reboot attempt
+        console.log('Attempting to reboot device:', deviceId);
+        
+        const response = await axios.post(
+            `${process.env.GENIEACS_URL}/devices/${encodeURIComponent(deviceId)}/tasks?timeout=3000&connection_request`,
+            { name: "reboot" },
+            {
+                auth: {
+                    username: process.env.GENIEACS_USERNAME,
+                    password: process.env.GENIEACS_PASSWORD
+                },
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log('Reboot response:', response.data);
+        res.json({ success: true, message: 'Perintah reboot berhasil dikirim' });
+    } catch (error) {
+        console.error('Reboot error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Gagal mengirim perintah reboot',
+            error: error.message 
+        });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server berjalan di port ${PORT}`);

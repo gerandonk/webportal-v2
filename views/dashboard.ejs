@@ -158,9 +158,14 @@
                         </div>
                         <h5 class="card-title mb-1"><%= deviceData.statusLabel %></h5>
                         <p class="text-muted small mb-0">Last Inform: <%= deviceData.lastInform %></p>
-                        <button id="refreshButton" class="btn btn-refresh mt-3" onclick="refreshDevice()">
-                            <i class="fas fa-sync-alt me-2"></i>Refresh
-                        </button>
+                        <div class="mt-3">
+                            <button id="refreshButton" class="btn btn-refresh me-2" onclick="refreshDevice()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                            <button id="rebootButton" class="btn btn-danger" onclick="rebootDevice()">
+                                <i class="fas fa-power-off me-2"></i>Reboot
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -488,6 +493,54 @@
                     refreshButton.disabled = false;
                     refreshButton.innerHTML = originalContent;
                 }
+            }
+        }
+
+        // Fungsi untuk reboot device
+        async function rebootDevice() {
+            const rebootButton = document.getElementById('rebootButton');
+            const originalContent = rebootButton.innerHTML;
+            
+            try {
+                // Disable button dan tampilkan loading state
+                rebootButton.disabled = true;
+                rebootButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Rebooting...';
+                
+                // Konfirmasi dari user
+                if (!confirm('Apakah Anda yakin ingin melakukan reboot device?')) {
+                    rebootButton.disabled = false;
+                    rebootButton.innerHTML = originalContent;
+                    return;
+                }
+
+                const response = await fetch('/reboot-device', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        deviceId: '<%= deviceData.deviceId %>'
+                    })
+                });
+
+                const result = await response.json();
+                
+                // Tampilkan toast notification
+                showToast(result.success ? 'success' : 'danger', result.message);
+                
+                // Jika berhasil, refresh data setelah beberapa detik
+                if (result.success) {
+                    setTimeout(() => {
+                        refreshDevice();
+                    }, 30000); // Refresh after 30 seconds
+                }
+            } catch (error) {
+                console.error('Reboot error:', error);
+                showToast('danger', 'Gagal melakukan reboot device');
+            } finally {
+                // Kembalikan button ke kondisi awal
+                rebootButton.disabled = false;
+                rebootButton.innerHTML = originalContent;
             }
         }
     </script>

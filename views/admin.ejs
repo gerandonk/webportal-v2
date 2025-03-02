@@ -94,6 +94,38 @@
             margin-bottom: 1rem;
             color: #4a90e2;
         }
+
+        /* Style untuk tombol reboot */
+        .reboot-device-btn {
+            transition: all 0.3s ease;
+        }
+        .reboot-device-btn:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+        .reboot-device-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        /* Style untuk alert */
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            min-width: 300px;
+            z-index: 1000;
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -198,10 +230,18 @@
                                         <span class="status-indicator <%= device.online ? 'status-online' : 'status-offline' %>"></span>
                                         <%= device.pppUsername || 'Unknown User' %>
                                     </h5>
-                                    <button class="btn btn-sm btn-outline-primary refresh-device-btn" 
-                                            data-device-id="<%= device._id.replace(/\+/g, '%2B').replace(/\s/g, '+') %>">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary refresh-device-btn me-2" 
+                                                data-device-id="<%= device._id %>"
+                                                title="Refresh Device">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger reboot-device-btn"
+                                                data-device-id="<%= device._id %>"
+                                                title="Reboot Device">
+                                            <i class="fas fa-power-off"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-6">
@@ -391,6 +431,60 @@
                 }
             });
         });
+
+        // Event listener untuk tombol reboot
+        document.querySelectorAll('.reboot-device-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const deviceId = this.dataset.deviceId;
+                const deviceName = this.closest('.card').querySelector('.card-title').textContent.trim();
+                
+                // Konfirmasi dari user
+                if (!confirm(`Apakah Anda yakin ingin melakukan reboot device ${deviceName}?`)) {
+                    return;
+                }
+                
+                const originalContent = this.innerHTML;
+                
+                try {
+                    // Disable button dan tampilkan loading state
+                    this.disabled = true;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    
+                    const response = await fetch('/reboot-device', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ deviceId })
+                    });
+
+                    const result = await response.json();
+                    
+                    // Tampilkan alert
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = `alert alert-${result.success ? 'success' : 'danger'} alert-dismissible fade show`;
+                    alertDiv.innerHTML = `
+                        ${result.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+                    
+                    // Jika berhasil, refresh device setelah 30 detik
+                    if (result.success) {
+                        setTimeout(() => {
+                            this.closest('.card').querySelector('.refresh-device-btn').click();
+                        }, 30000);
+                    }
+                } catch (error) {
+                    console.error('Reboot error:', error);
+                    alert('Gagal melakukan reboot device');
+                } finally {
+                    // Kembalikan button ke kondisi awal
+                    this.disabled = false;
+                    this.innerHTML = originalContent;
+                }
+            });
+        });
     </script>
 </body>
-</html> 
+</html>
