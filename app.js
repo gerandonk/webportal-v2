@@ -3,14 +3,50 @@ const session = require('express-session');
 const path = require('path');
 const axios = require('axios');
 const fs = require('fs');
+const crypto = require('crypto');
 require('dotenv').config();
 
-// Fungsi untuk decode token
-function decodeToken(encoded) {
-    return Buffer.from(encoded, 'base64').toString('utf-8');
+const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
+
+// Inisialisasi status pro
+if (!fs.existsSync(PRO_STATUS_FILE)) {
+    fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify({
+        isPro: false,
+        activatedAt: null
+    }));
 }
 
-const PRO_TOKEN_ENCODED = 'd2VicG9ydGFsMjAyNQ=='; 
+// Fungsi untuk mengecek apakah aplikasi sudah diaktivasi
+function isActivated() {
+    try {
+        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
+        return proStatus.isPro === true;
+    } catch {
+        return false;
+    }
+}
+
+// Fungsi utama
+function verifyToken(inputToken) {
+    try {
+        // Genesi biru
+        const hash = crypto.createHash('sha512');
+        const salt = 'S3cur3S@lt!2025'; 
+        hash.update(inputToken + salt);
+        const hashedInput = hash.digest('hex');
+
+        // Hasilnya
+        const validHash = 'c2142c0c7ad0b44717d70d1365372bc02a4645cb682c4e5d4a4497717ac79a1f49211014032b6ceb0138b7dcce6b355b021fca04c7e2ec22534a06492e500359';
+        
+        // Bandingkan hash dengan timing-safe comparison
+        return crypto.timingSafeEqual(
+            Buffer.from(hashedInput),
+            Buffer.from(validHash)
+        );
+    } catch {
+        return false;
+    }
+}
 
 const app = express();
 
@@ -19,25 +55,90 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(session({
-    secret: 'rahasia-session',
+    secret: crypto.randomBytes(32).toString('hex'),
     resave: false,
     saveUninitialized: true
 }));
-
-const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
-
-// Initialize pro status file if it doesn't exist
-if (!fs.existsSync(PRO_STATUS_FILE)) {
-    fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify({}));
-}
 
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// Middleware untuk mengecek aktivasi
+app.use((req, res, next) => {
+    // Skip pengecekan untuk halaman aktivasi dan assets
+    if (req.path === '/activate' || 
+        req.path === '/verify-token' || 
+        req.path === '/admin-login' ||
+        req.path === '/login' ||
+        req.path === '/' ||
+        req.path.startsWith('/public/')) {
+        return next();
+    }
+
+    // Redirect ke halaman aktivasi jika belum diaktivasi
+    if (!isActivated()) {
+        return res.redirect('/activate');
+    }
+    next();
+});
+
+// Halaman aktivasi
+app.get('/activate', (req, res) => {
+    if (isActivated()) {
+        return res.redirect('/admin-login');
+    }
+    res.render('activate', { error: null });
+});
+
+// Verifikasi token
+app.post('/verify-token', (req, res) => {
+    const { token } = req.body;
+    
+    if (isActivated()) {
+        return res.json({ success: true, message: 'Aplikasi sudah diaktivasi' });
+    }
+
+    if (verifyToken(token)) {
+        // Aktivasi berhasil
+        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
+        proStatus.isPro = true;
+        proStatus.activatedAt = new Date().toISOString();
+        fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
+        res.json({ success: true, message: 'Aktivasi berhasil', redirectTo: '/admin-login' });
+    } else {
+        res.status(403).json({ success: false, message: 'Token tidak valid' });
+    }
+});
+
 // Routes
 app.get('/', (req, res) => {
-    res.render('login', { error: null });
+    if (!isActivated()) {
+        return res.redirect('/activate');
+    }
+    res.redirect('/admin-login');
+});
+
+app.get('/admin-login', (req, res) => {
+    if (req.session.isAdmin) {
+        return res.redirect('/admin');
+    }
+    if (!isActivated()) {
+        return res.redirect('/activate');
+    }
+    res.render('admin-login', { error: null });
+});
+
+app.post('/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    // Verifikasi kredensial admin
+    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+        req.session.isAdmin = true;
+        res.redirect('/admin');
+    } else {
+        res.render('admin-login', { error: 'Username atau password salah' });
+    }
 });
 
 app.get('/login', (req, res) => {
@@ -732,6 +833,10 @@ app.get('/admin', async (req, res) => {
             return res.redirect('/admin/login');
         }
 
+        if (!isActivated()) {
+            return res.redirect('/activate');
+        }
+
         const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
             auth: {
                 username: process.env.GENIEACS_USERNAME,
@@ -807,6 +912,9 @@ app.get('/admin/login', (req, res) => {
     if (req.session.isAdmin) {
         return res.redirect('/admin');
     }
+    if (!isActivated()) {
+        return res.redirect('/activate');
+    }
     res.render('admin-login', { error: null });
 });
 
@@ -874,6 +982,10 @@ app.post('/admin/refresh-device/:deviceId', async (req, res) => {
     try {
         if (!req.session.isAdmin) {
             return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
+        if (!isActivated()) {
+            return res.redirect('/activate');
         }
 
         // Get original deviceId from GenieACS
@@ -981,6 +1093,10 @@ app.post('/admin/refresh-all', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
+        if (!isActivated()) {
+            return res.redirect('/activate');
+        }
+
         // Ambil semua devices
         const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
             auth: {
@@ -1049,25 +1165,6 @@ app.post('/admin/refresh-all', async (req, res) => {
             message: 'Failed to refresh devices: ' + error.message 
         });
     }
-});
-
-// Endpoint to save PRO status
-app.post('/set-pro-status', (req, res) => {
-    const { token } = req.body;
-    if (token === decodeToken(PRO_TOKEN_ENCODED)) {
-        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-        proStatus.isPro = true;
-        fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
-        res.json({ success: true });
-    } else {
-        res.status(400).json({ success: false });
-    }
-});
-
-// Endpoint untuk memeriksa status PRO
-app.get('/check-pro-status', (req, res) => {
-    const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-    res.json({ isPro: proStatus.isPro || false });
 });
 
 // Endpoint untuk reboot device
