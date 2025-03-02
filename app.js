@@ -3,50 +3,14 @@ const session = require('express-session');
 const path = require('path');
 const axios = require('axios');
 const fs = require('fs');
-const crypto = require('crypto');
 require('dotenv').config();
 
-const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
-
-// Inisialisasi status pro
-if (!fs.existsSync(PRO_STATUS_FILE)) {
-    fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify({
-        isPro: false,
-        activatedAt: null
-    }));
+// Fungsi untuk decode token
+function decodeToken(encoded) {
+    return Buffer.from(encoded, 'base64').toString('utf-8');
 }
 
-// Fungsi untuk mengecek apakah aplikasi sudah diaktivasi
-function isActivated() {
-    try {
-        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-        return proStatus.isPro === true;
-    } catch {
-        return false;
-    }
-}
-
-// Fungsi untuk memverifikasi token
-function verifyToken(inputToken) {
-    try {
-        // Generate hash dari input token
-        const hash = crypto.createHash('sha512');
-        const salt = 'S3cur3S@lt!2025'; // Salt statis untuk konsistensi
-        hash.update(inputToken + salt);
-        const hashedInput = hash.digest('hex');
-
-        // Hash dari token yang benar (pre-computed dari 'alijaya060111')
-        const validHash = 'c2142c0c7ad0b44717d70d1365372bc02a4645cb682c4e5d4a4497717ac79a1f49211014032b6ceb0138b7dcce6b355b021fca04c7e2ec22534a06492e500359';
-        
-        // Bandingkan hash dengan timing-safe comparison
-        return crypto.timingSafeEqual(
-            Buffer.from(hashedInput),
-            Buffer.from(validHash)
-        );
-    } catch {
-        return false;
-    }
-}
+const PRO_TOKEN_ENCODED = 'd2VicG9ydGFsMjAyNQ=='; 
 
 const app = express();
 
@@ -55,107 +19,37 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(session({
-    secret: crypto.randomBytes(32).toString('hex'),
+    secret: 'rahasia-session',
     resave: false,
     saveUninitialized: true
 }));
+
+const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
+
+// Initialize pro status file if it doesn't exist
+if (!fs.existsSync(PRO_STATUS_FILE)) {
+    fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify({}));
+}
 
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middleware untuk mengecek aktivasi
-app.use((req, res, next) => {
-    // Skip pengecekan untuk halaman aktivasi dan assets
-    if (req.path === '/activate' || 
-        req.path === '/verify-token' || 
-        req.path === '/admin-login' ||
-        req.path === '/admin/login' ||
-        req.path.startsWith('/public/')) {
-        return next();
-    }
-
-    // Redirect ke halaman aktivasi jika belum diaktivasi
-    if (!isActivated()) {
-        return res.redirect('/activate');
-    }
-    next();
-});
-
-// Halaman aktivasi
-app.get('/activate', (req, res) => {
-    if (isActivated()) {
-        return res.redirect('/');
-    }
-    res.render('activate', { error: null });
-});
-
-// Verifikasi token
-app.post('/verify-token', (req, res) => {
-    const { token } = req.body;
-    
-    if (isActivated()) {
-        return res.json({ success: true, message: 'Aplikasi sudah diaktivasi' });
-    }
-
-    if (verifyToken(token)) {
-        // Aktivasi berhasil
-        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-        proStatus.isPro = true;
-        proStatus.activatedAt = new Date().toISOString();
-        fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
-        res.json({ success: true, message: 'Aktivasi berhasil' });
-    } else {
-        res.status(403).json({ success: false, message: 'Token tidak valid' });
-    }
-});
-
-// Routes untuk customer
+// Routes
 app.get('/', (req, res) => {
-    if (!isActivated()) {
-        return res.redirect('/activate');
-    }
     res.render('login', { error: null });
 });
 
 app.get('/login', (req, res) => {
-    if (!isActivated()) {
-        return res.redirect('/activate');
-    }
     res.render('login', { error: null });
 });
 
-// Routes untuk admin
-app.get('/admin', (req, res) => {
-    if (!isActivated()) {
-        return res.redirect('/activate');
+app.get('/verify-otp', (req, res) => {
+    // Redirect ke login jika tidak ada username
+    if (!req.query.username) {
+        return res.redirect('/login');
     }
-    if (!req.session.isAdmin) {
-        return res.redirect('/admin-login');
-    }
-    res.render('admin', { error: null });
-});
-
-app.get('/admin-login', (req, res) => {
-    if (!isActivated()) {
-        return res.redirect('/activate');
-    }
-    if (req.session.isAdmin) {
-        return res.redirect('/admin');
-    }
-    res.render('admin-login', { error: null });
-});
-
-app.post('/admin/login', (req, res) => {
-    const { username, password } = req.body;
-    
-    // Verifikasi kredensial admin
-    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-        req.session.isAdmin = true;
-        res.redirect('/admin');
-    } else {
-        res.render('admin-login', { error: 'Username atau password salah' });
-    }
+    res.render('verify-otp', { username: req.query.username, error: null });
 });
 
 // Fungsi untuk generate OTP
@@ -497,8 +391,6 @@ app.get('/dashboard', async (req, res) => {
 
         // Get device data
         const deviceData = {
-            _id: device._id,
-            _tags: device._tags || [],
             username: req.session.username,
             model: model,
             serialNumber: serialNumber,
@@ -675,8 +567,8 @@ function encodeDeviceId(deviceId) {
 // Update SSID endpoint
 app.post('/update-wifi', async (req, res) => {
     try {
-        const { ssid, password, deviceId: requestDeviceId } = req.body;
-        const deviceId = requestDeviceId || req.session.deviceId; // Use deviceId from request if provided, otherwise from session
+        const { ssid, password } = req.body;
+        const deviceId = req.session.deviceId;
 
         console.log('Update WiFi Request:', {
             deviceId,
@@ -686,11 +578,6 @@ app.post('/update-wifi', async (req, res) => {
 
         if (!deviceId) {
             throw new Error('Device ID tidak valid');
-        }
-
-        // Jika deviceId dari request, pastikan user adalah admin
-        if (requestDeviceId && !req.session.isAdmin) {
-            return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
         // Cek device terlebih dahulu
@@ -838,10 +725,6 @@ app.get('/admin', async (req, res) => {
             return res.redirect('/admin/login');
         }
 
-        if (!isActivated()) {
-            return res.redirect('/activate');
-        }
-
         const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
             auth: {
                 username: process.env.GENIEACS_USERNAME,
@@ -861,7 +744,6 @@ app.get('/admin', async (req, res) => {
 
             return {
                 _id: device._id,
-                _tags: device._tags || [],
                 online: isOnline,
                 lastInform: device._lastInform || new Date(),
                 pppUsername: getParameterWithPaths(device, parameterPaths.pppUsername) || 'Unknown',
@@ -869,9 +751,7 @@ app.get('/admin', async (req, res) => {
                 rxPower: getParameterWithPaths(device, parameterPaths.rxPower) || 'N/A',
                 model: getParameterWithPaths(device, parameterPaths.productClass) || 'N/A',
                 serialNumber: getParameterWithPaths(device, parameterPaths.serialNumber) || 'N/A',
-                ssid: getParameterWithPaths(device, parameterPaths.ssid) || '',
-                connectedDevices: connectedDevices,
-                mac: getParameterWithPaths(device, [...parameterPaths.pppMac, ...parameterPaths.pppMacWildcard]) || 'N/A'
+                connectedDevices: connectedDevices
             };
         });
 
@@ -916,9 +796,6 @@ app.post('/admin/login', async (req, res) => {
 app.get('/admin/login', (req, res) => {
     if (req.session.isAdmin) {
         return res.redirect('/admin');
-    }
-    if (!isActivated()) {
-        return res.redirect('/activate');
     }
     res.render('admin-login', { error: null });
 });
@@ -987,10 +864,6 @@ app.post('/admin/refresh-device/:deviceId', async (req, res) => {
     try {
         if (!req.session.isAdmin) {
             return res.status(403).json({ success: false, message: 'Unauthorized' });
-        }
-
-        if (!isActivated()) {
-            return res.redirect('/activate');
         }
 
         // Get original deviceId from GenieACS
@@ -1098,10 +971,6 @@ app.post('/admin/refresh-all', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
-        if (!isActivated()) {
-            return res.redirect('/activate');
-        }
-
         // Ambil semua devices
         const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
             auth: {
@@ -1170,6 +1039,25 @@ app.post('/admin/refresh-all', async (req, res) => {
             message: 'Failed to refresh devices: ' + error.message 
         });
     }
+});
+
+// Endpoint to save PRO status
+app.post('/set-pro-status', (req, res) => {
+    const { token } = req.body;
+    if (token === decodeToken(PRO_TOKEN_ENCODED)) {
+        const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
+        proStatus.isPro = true;
+        fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ success: false });
+    }
+});
+
+// Endpoint untuk memeriksa status PRO
+app.get('/check-pro-status', (req, res) => {
+    const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
+    res.json({ isPro: proStatus.isPro || false });
 });
 
 // Endpoint untuk reboot device
