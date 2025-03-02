@@ -5,12 +5,13 @@ const axios = require('axios');
 const fs = require('fs');
 require('dotenv').config();
 
-// apa ya embuh ah
+// Fungsi untuk decode token
 function decodeToken(encoded) {
     return Buffer.from(encoded, 'base64').toString('utf-8');
 }
 
-const PRO_TOKEN_ENCODED = 'd2VicG9ydGFsMjAyNQ=='; 
+const PRO_TOKEN_ENCODED = 'd2VicG9ydGFsMjAyNQ=='; // Token terenkripsi
+
 const app = express();
 
 // Middleware
@@ -39,9 +40,183 @@ app.get('/', (req, res) => {
     res.render('login', { error: null });
 });
 
-// Login handler
+app.get('/login', (req, res) => {
+    res.render('login', { error: null });
+});
+
+app.get('/verify-otp', (req, res) => {
+    // Redirect ke login jika tidak ada username
+    if (!req.query.username) {
+        return res.redirect('/login');
+    }
+    res.render('verify-otp', { username: req.query.username, error: null });
+});
+
+// Fungsi untuk generate OTP
+function generateOTP() {
+    return Math.floor(100000 + Math.random() * 900000);
+}
+
+// Simpan OTP sementara (dalam praktik nyata sebaiknya gunakan database)
+const otpStore = new Map();
+
+// Fungsi untuk format nomor WhatsApp
+function formatWhatsAppNumber(number) {
+    // Hapus semua spasi dan karakter non-digit
+    number = number.replace(/\D/g, '');
+    
+    // Jika dimulai dengan 0, ganti dengan 62
+    if (number.startsWith('0')) {
+        number = '62' + number.slice(1);
+    }
+    // Jika dimulai dengan 62, biarkan apa adanya
+    else if (number.startsWith('62')) {
+        number = number;
+    }
+    // Jika tidak dimulai dengan 0 atau 62, tambahkan 62
+    else {
+        number = '62' + number;
+    }
+    
+    return number;
+}
+
+// Fungsi untuk kirim OTP via Fonnte
+async function sendOTP(customerNumber, otp) {
+    try {
+        // Format nomor WhatsApp
+        const formattedNumber = formatWhatsAppNumber(customerNumber);
+        
+        const response = await fetch('https://api.fonnte.com/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': process.env.FONNTE_TOKEN,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                target: formattedNumber,
+                message: `Kode OTP Anda untuk login WebPortal: ${otp}. Kode ini berlaku selama 5 menit.`
+            })
+        });
+        return response.ok;
+    } catch (error) {
+        console.error('Error sending OTP:', error);
+        return false;
+    }
+}
+
+// Endpoint untuk login customer dengan OTP
 app.post('/login', async (req, res) => {
     const { username } = req.body;
+    if (!username) {
+        return res.render('login', { error: 'Nomor pelanggan diperlukan' });
+    }
+
+    try {
+        console.log('Attempting to connect to GenieACS server...');
+        
+        // Get all devices first
+        const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
+            auth: {
+                username: process.env.GENIEACS_USERNAME,
+                password: process.env.GENIEACS_PASSWORD
+            },
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        console.log('Total devices:', response.data.length);
+
+        // Find device with matching tag
+        const device = response.data.find(d => {
+            console.log('Checking device:', {
+                id: d._id,
+                tags: d._tags,
+                rawDevice: JSON.stringify(d)
+            });
+            return d._tags && d._tags.includes(username);
+        });
+
+        if (device) {
+            console.log('Device found:', {
+                deviceId: device._id,
+                tags: device._tags
+            });
+
+            // Cek apakah OTP diaktifkan di .env
+            if (process.env.OTP_ENABLED === 'true') {
+                // Generate dan kirim OTP
+                const otp = generateOTP();
+                const success = await sendOTP(username, otp);
+                
+                if (success) {
+                    // Simpan OTP dengan waktu kadaluarsa 5 menit
+                    otpStore.set(username, {
+                        code: otp,
+                        expiry: Date.now() + (5 * 60 * 1000)
+                    });
+                    // Redirect ke halaman verifikasi OTP
+                    res.render('verify-otp', { username, error: null });
+                } else {
+                    res.render('login', { error: 'Gagal mengirim OTP, silakan coba lagi' });
+                }
+            } else {
+                // Jika OTP dinonaktifkan, langsung login
+                req.session.username = username;
+                req.session.deviceId = device._id;
+                res.redirect('/dashboard');
+            }
+        } else {
+            // Debug: Log all devices and their tags
+            console.log('No device found with tag:', username);
+            console.log('Available devices:', response.data.map(d => ({
+                id: d._id,
+                tags: d._tags || [],
+                rawDevice: JSON.stringify(d)
+            })));
+
+            res.render('login', { error: 'Nomor pelanggan tidak ditemukan' });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        console.error('Full error details:', {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            url: error.config?.url
+        });
+        res.render('login', { error: 'Terjadi kesalahan saat login' });
+    }
+});
+
+// Endpoint untuk verifikasi OTP
+app.post('/verify-otp', async (req, res) => {
+    const { username, otp } = req.body;
+    
+    // Verifikasi OTP
+    const storedOTP = otpStore.get(username);
+    console.log('Verifying OTP:', {
+        input: otp,
+        stored: storedOTP?.code,
+        expiry: storedOTP?.expiry,
+        now: Date.now(),
+        isExpired: storedOTP ? Date.now() > storedOTP.expiry : true
+    });
+
+    // Pastikan tipe data sama (string) saat membandingkan
+    if (!storedOTP || 
+        String(storedOTP.code) !== String(otp) || 
+        Date.now() > storedOTP.expiry) {
+        return res.render('verify-otp', { 
+            username, 
+            error: 'OTP tidak valid atau kadaluarsa' 
+        });
+    }
+
+    // Hapus OTP yang sudah digunakan
+    otpStore.delete(username);
+
     try {
         console.log('Attempting to connect to GenieACS server...');
         
@@ -113,6 +288,7 @@ const parameterPaths = {
     ],
     pppMac: [
         'VirtualParameters.pppMac',
+        'VirtualParameters.WanMac',
         'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.MACAddress',
         'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.2.MACAddress',
         'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.MACAddress',
