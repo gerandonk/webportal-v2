@@ -23,13 +23,6 @@ Admin Configuration<br>
 ADMIN_USERNAME=admin // username admin<br>
 ADMIN_PASSWORD=admin // password admin<br>
 
-Fonnte WhatsApp Gateway<br>
-FONNTE_TOKEN=wik2cbw4xxxxxxxxxxxxxxxxxxxx   // token Fonnte WhatsApp Gateway<br>
-ADMIN_WHATSAPP=628782xxxxxxx // nomor WhatsApp admin<br>
-
-OTP Configuration<br>
-OTP_ENABLED=false // jika ingin menggunakan OTP, silakan set menjadi true<br>
-
 lalu di rename menjadi .env <br>
 
 ```
