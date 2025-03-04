@@ -312,16 +312,20 @@ const parameterPaths = {
         'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID'
     ],
     ssid5G: [
-        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID'
+        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID'
     ],
     userConnected: [
         'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations'
     ],
     userConnected2G: [
-        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations'
+        'VirtualParameters.activedevices',
+        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations',
+        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.AssociatedDeviceNumberOfEntries'
     ],
     userConnected5G: [
-        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.TotalAssociations'
+        'VirtualParameters.activedevices',
+        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.TotalAssociations',
+        'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.AssociatedDeviceNumberOfEntries'
     ],
     uptime: [
         'VirtualParameters.getdeviceuptime'
@@ -648,6 +652,10 @@ app.get('/admin', async (req, res) => {
         });
 
         const devices = response.data.map(device => {
+            const activeDevices = getParameterWithPaths(device, ['VirtualParameters.activedevices']) || '0';
+            // Asumsikan setengah dari total activedevices untuk masing-masing band
+            const devicesPerBand = Math.ceil(parseInt(activeDevices) / 2);
+            
             // Cek status berdasarkan last inform time
             const isOnline = getDeviceStatus(device._lastInform);
             
@@ -669,7 +677,9 @@ app.get('/admin', async (req, res) => {
                 serialNumber: getParameterWithPaths(device, parameterPaths.serialNumber) || 'N/A',
                 ssid: getParameterWithPaths(device, parameterPaths.ssid) || '',
                 connectedDevices: connectedDevices,
-                mac: getParameterWithPaths(device, [...parameterPaths.pppMac, ...parameterPaths.pppMacWildcard]) || 'N/A'
+                mac: getParameterWithPaths(device, [...parameterPaths.pppMac, ...parameterPaths.pppMacWildcard]) || 'N/A',
+                userConnected2G: devicesPerBand.toString(),
+                userConnected5G: devicesPerBand.toString(),
             };
         });
 
