@@ -809,7 +809,7 @@ app.post('/update-wifi', async (req, res) => {
         
         if (ssid5G) {
             parameterValues.push(
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID", ssid5G, "xsd:string"]
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID", ssid5G, "xsd:string"]
             );
         }
 
@@ -822,8 +822,8 @@ app.post('/update-wifi', async (req, res) => {
 
         if (password5G) {
             parameterValues.push(
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.KeyPassphrase", password5G, "xsd:string"],
-                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.KeyPassphrase", password5G, "xsd:string"]
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.PreSharedKey.1.KeyPassphrase", password5G, "xsd:string"],
+                ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.KeyPassphrase", password5G, "xsd:string"]
             );
         }
 

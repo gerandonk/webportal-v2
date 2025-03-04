@@ -790,7 +790,7 @@
                         body: JSON.stringify({
                             deviceId: deviceId,
                             ssid2G: ssidInput.value,  // Gunakan nilai yang sama untuk kedua band
-                            ssid5G: ssidInput.value
+                            ssid5G: ssidInput.value + '-5G'  // Tambahkan suffix -5G untuk band 5G
                         })
                     });
 

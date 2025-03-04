@@ -370,6 +370,7 @@
                 submitButton.disabled = true;
                 submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
                 
+                // Kirim request refresh
                 const response = await fetch('/update-wifi', {
                     method: 'POST',
                     headers: {
@@ -378,22 +379,44 @@
                     body: JSON.stringify({
                         deviceId: deviceId,
                         ssid2G: ssidInput.value,  // Update kedua band
-                        ssid5G: ssidInput.value
+                        ssid5G: ssidInput.value + '-5G'  // Tambahkan suffix -5G untuk band 5G
                     })
                 });
 
                 const data = await response.json();
-                showAlert(data.success ? 'success' : 'danger', data.message);
                 
                 if (data.success) {
-                    setTimeout(() => location.reload(), 2000);
+                    // Tampilkan toast notification
+                    const toast = document.createElement('div');
+                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+                    toast.style.zIndex = '1050';
+                    toast.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        Data berhasil di-refresh
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Hapus toast setelah 3 detik
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 3000);
+                    
+                    // Reload halaman
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Gagal me-refresh data');
                 }
             } catch (error) {
-                console.error('Update SSID error:', error);
-                showAlert('danger', 'Gagal mengupdate SSID: ' + (error.message || 'Unknown error'));
+                console.error('Refresh error:', error);
+                alert('Terjadi kesalahan saat me-refresh data: ' + error.message);
             } finally {
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalButtonText;
+                // Kembalikan button ke kondisi awal
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
             }
         });
 
@@ -433,6 +456,8 @@
                 if (data.success) {
                     passwordInput.value = '';
                     setTimeout(() => location.reload(), 2000);
+                } else {
+                    throw new Error(data.message || 'Gagal mengupdate password');
                 }
             } catch (error) {
                 console.error('Update password error:', error);
