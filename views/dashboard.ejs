@@ -131,34 +131,6 @@
             min-width: 300px;
             display: none;
         }
-        /* Style untuk alert/toast */
-        .custom-alert {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-            min-width: 300px;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-            border-radius: 0.25rem;
-            padding: 1rem;
-            display: flex;
-            align-items: center;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-        }
-        .custom-alert.show {
-            opacity: 1;
-        }
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border-left: 4px solid #28a745;
-        }
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #721c24;
-            border-left: 4px solid #dc3545;
-        }
     </style>
 </head>
 <body class="bg-light">
@@ -370,7 +342,6 @@
                 submitButton.disabled = true;
                 submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
                 
-                // Kirim request refresh
                 const response = await fetch('/update-wifi', {
                     method: 'POST',
                     headers: {
@@ -379,44 +350,22 @@
                     body: JSON.stringify({
                         deviceId: deviceId,
                         ssid2G: ssidInput.value,  // Update kedua band
-                        ssid5G: ssidInput.value + '-5G'  // Tambahkan suffix -5G untuk band 5G
+                        ssid5G: ssidInput.value
                     })
                 });
 
                 const data = await response.json();
+                showAlert(data.success ? 'success' : 'danger', data.message);
                 
                 if (data.success) {
-                    // Tampilkan toast notification
-                    const toast = document.createElement('div');
-                    toast.className = 'alert alert-success position-fixed top-0 end-0 m-3';
-                    toast.style.zIndex = '1050';
-                    toast.innerHTML = `
-                        <i class="fas fa-check-circle me-2"></i>
-                        Data berhasil di-refresh
-                    `;
-                    document.body.appendChild(toast);
-                    
-                    // Hapus toast setelah 3 detik
-                    setTimeout(() => {
-                        toast.remove();
-                    }, 3000);
-                    
-                    // Reload halaman
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    throw new Error(data.message || 'Gagal me-refresh data');
+                    setTimeout(() => location.reload(), 2000);
                 }
             } catch (error) {
-                console.error('Refresh error:', error);
-                alert('Terjadi kesalahan saat me-refresh data: ' + error.message);
+                console.error('Update SSID error:', error);
+                showAlert('danger', 'Gagal mengupdate SSID');
             } finally {
-                // Kembalikan button ke kondisi awal
-                if (submitButton) {
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalButtonText;
-                }
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
             }
         });
 
@@ -456,12 +405,10 @@
                 if (data.success) {
                     passwordInput.value = '';
                     setTimeout(() => location.reload(), 2000);
-                } else {
-                    throw new Error(data.message || 'Gagal mengupdate password');
                 }
             } catch (error) {
                 console.error('Update password error:', error);
-                showAlert('danger', 'Gagal mengupdate password: ' + (error.message || 'Unknown error'));
+                showAlert('danger', 'Gagal mengupdate password');
             } finally {
                 submitButton.disabled = false;
                 submitButton.innerHTML = originalButtonText;
@@ -637,55 +584,6 @@
                 button.disabled = false;
                 button.innerHTML = originalButtonText;
             }
-        }
-
-        function showAlert(type, message) {
-            const alertContainer = document.getElementById('alert-container');
-            if (!alertContainer) {
-                const container = document.createElement('div');
-                container.id = 'alert-container';
-                document.body.appendChild(container);
-            }
-
-            const alert = document.createElement('div');
-            alert.className = `custom-alert alert-${type}`;
-            alert.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                ${message}
-            `;
-            document.getElementById('alert-container').appendChild(alert);
-
-            setTimeout(() => {
-                alert.classList.add('show');
-            }, 100);
-
-            setTimeout(() => {
-                alert.classList.remove('show');
-                setTimeout(() => {
-                    alert.remove();
-                }, 500);
-            }, 3000);
-        }
-
-        function showToast(type, message) {
-            const toast = document.createElement('div');
-            toast.className = `custom-alert alert-${type}`;
-            toast.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                ${message}
-            `;
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 100);
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                    toast.remove();
-                }, 500);
-            }, 3000);
         }
     </script>
 </body>

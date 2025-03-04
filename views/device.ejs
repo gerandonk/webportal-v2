@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .alert {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .btn-refresh {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            transition: all 0.2s ease;
+        }
+        .btn-refresh:hover {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        .btn-refresh:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .fa-spin {
+            animation: spin 1s linear infinite;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card {
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .status-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            color: white;
+            font-size: 2rem;
+        }
+        .btn-refresh {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .btn-refresh:hover {
+            transform: rotate(180deg);
+            color: white;
+        }
+        .info-group {
+            margin-bottom: 1rem;
+        }
+        .info-group label {
+            display: block;
+            color: #6c757d;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+        .info-group .value {
+            font-weight: 500;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-right: 1rem;
+        }
+        .stat-info label {
+            display: block;
+            color: #6c757d;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+        .stat-info .value {
+            font-weight: 500;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-wifi me-2"></i>ONT Manager
+            </a>
+            <div class="ms-auto">
+                <a href="/admin" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Admin
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row">
+            <!-- Status Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="status-icon mb-3" style="background-color: <%= device.online ? 'var(--bs-success)' : 'var(--bs-danger)' %>">
+                            <i class="fas fa-signal"></i>
+                        </div>
+                        <h5 class="card-title mb-1"><%= device.online ? 'Online' : 'Offline' %></h5>
+                        <p class="text-muted small mb-0">Last Inform: <%= device.lastInform %></p>
+                        <div class="mt-3">
+                            <button id="refreshButton" class="btn btn-refresh me-2" onclick="refreshDevice()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                            <button id="rebootButton" class="btn btn-danger" onclick="rebootDevice()">
+                                <i class="fas fa-power-off me-2"></i>Reboot
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Info Card -->
+            <div class="col-md-8 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-server me-2"></i>Device Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Model</label>
+                                    <div class="value"><%= device.productClass %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Serial Number</label>
+                                    <div class="value"><%= device.serialNumber %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>PPPoE Username</label>
+                                    <div class="value"><%= device.pppoeUsername %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>MAC Address</label>
+                                    <div class="value"><%= device.macAddress %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>IP Address</label>
+                                    <div class="value"><%= device.ipAddress %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Active Devices</label>
+                                    <div class="value"><%= device.activeDevices %></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-group">
+                                    <label>Current SSID</label>
+                                    <div class="value"><%= device.ssid || 'Not Available' %></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WiFi Settings -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-wifi me-2"></i>WiFi Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label">SSID</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="ssid" value="<%= device.ssid %>">
+                                <button class="btn btn-primary" onclick="updateWiFi('ssid')">
+                                    <i class="fas fa-save me-1"></i>Update SSID
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label">Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="wifiPassword">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('wifiPassword')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-primary" onclick="updateWiFi('password')">
+                                    <i class="fas fa-save me-1"></i>Update Password
+                                </button>
+                            </div>
+                            <div class="form-text">Password harus minimal 8 karakter</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Network Statistics -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Network Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>RX Power</label>
+                                <div class="value"><%= device.rxPower %> dBm</div>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <label>Active Devices</label>
+                                <div class="value"><%= device.activeDevices %></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showAlert(message, type) {
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+            alert.style.zIndex = '1050';
+            alert.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                ${message}
+            `;
+            document.body.appendChild(alert);
+
+            setTimeout(() => {
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            }, 3000);
+        }
+
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling;
+            const icon = button.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        async function updateWiFi(type) {
+            let input, button;
+            
+            if (type === 'ssid') {
+                input = document.getElementById('ssid');
+                button = input.nextElementSibling;
+            } else {
+                input = document.getElementById('wifiPassword');
+                button = input.nextElementSibling.nextElementSibling;
+                
+                if (input.value.length < 8) {
+                    showAlert('Password harus minimal 8 karakter', 'danger');
+                    return;
+                }
+            }
+
+            const originalButtonText = button.innerHTML;
+            
+            try {
+                input.disabled = true;
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+
+                const data = {};
+                data[type === 'ssid' ? 'ssid' : 'password'] = input.value;
+
+                const response = await fetch(`/device/<%= device._id %>/wifi`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('WiFi settings updated successfully', 'success');
+                    if (type === 'password') {
+                        input.value = '';
+                    }
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                showAlert('Failed to update WiFi settings: ' + error.message, 'danger');
+            } finally {
+                input.disabled = false;
+                button.disabled = false;
+                button.innerHTML = originalButtonText;
+            }
+        }
+
+        async function refreshDevice() {
+            const refreshButton = document.getElementById('refreshButton');
+            const originalContent = refreshButton.innerHTML;
+            
+            try {
+                refreshButton.disabled = true;
+                refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                const response = await fetch(`/admin/refresh-device/<%= device._id %>`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Device refresh initiated', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 5000);
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                showAlert('Failed to refresh device: ' + error.message, 'danger');
+            } finally {
+                refreshButton.disabled = false;
+                refreshButton.innerHTML = originalContent;
+            }
+        }
+
+        async function rebootDevice() {
+            if (!confirm('Are you sure you want to reboot this device?')) {
+                return;
+            }
+
+            const rebootButton = document.getElementById('rebootButton');
+            const originalContent = rebootButton.innerHTML;
+            
+            try {
+                rebootButton.disabled = true;
+                rebootButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                const response = await fetch(`/admin/reboot-device/<%= device._id %>`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Device reboot initiated', 'success');
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                showAlert('Failed to reboot device: ' + error.message, 'danger');
+            } finally {
+                rebootButton.disabled = false;
+                rebootButton.innerHTML = originalContent;
+            }
+        }
+    </script>
+</body>
+</html>

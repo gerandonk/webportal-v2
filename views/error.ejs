@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= message %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 50px;
+            background: #f8f9fa;
+        }
+        .error-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .error-title {
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+        .error-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        .back-button {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1 class="error-title">
+            <i class="fas fa-exclamation-circle me-2"></i><%= message %>
+        </h1>
+        <% if (error.status) { %>
+            <p class="text-muted">Status: <%= error.status %></p>
+        <% } %>
+        <% if (error.stack) { %>
+            <div class="error-details">
+                <%= error.stack %>
+            </div>
+        <% } %>
+        <div class="back-button">
+            <a href="javascript:history.back()" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back
+            </a>
+        </div>
+    </div>
+</body>
+</html>
