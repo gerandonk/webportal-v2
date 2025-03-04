@@ -1,0 +1,13 @@
+{
+  "otpEnabled": true,
+  "otpExpiry": 300,
+  "otpLength": 6,
+  "otpMessageTemplate": "Kode OTP Anda untuk login WebPortal: {otp}. Kode ini berlaku selama {expiry} menit.",
+  "waGateway": "fonnte",
+  "adminWhatsapp": "",
+  "fonnteApiKey": "",
+  "mpwaUrl": "",
+  "mpwaApiKey": "",
+  "wablasUrl": "",
+  "wablasApiKey": ""
+}

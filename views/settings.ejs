@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan Sistem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card {
+            transition: transform 0.2s;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/admin">
+                <i class="fas fa-cog me-2"></i>Pengaturan Sistem
+            </a>
+            <a href="/admin" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left me-2"></i>Kembali
+            </a>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <!-- OTP Settings -->
+        <div class="card mb-4">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Pengaturan OTP</h5>
+            </div>
+            <div class="card-body">
+                <form id="otpSettingsForm">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="otpEnabled" 
+                                   <%= settings.otpEnabled ? 'checked' : '' %>>
+                            <label class="form-check-label" for="otpEnabled">Aktifkan OTP</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Masa Berlaku OTP (detik)</label>
+                        <input type="number" class="form-control" id="otpExpiry" 
+                               value="<%= settings.otpExpiry || 300 %>"
+                               min="60" max="3600">
+                        <small class="text-muted">Minimal 60 detik, maksimal 3600 detik (1 jam)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Panjang Kode OTP</label>
+                        <select class="form-select" id="otpLength">
+                            <option value="4" <%= settings.otpLength === 4 ? 'selected' : '' %>>4 digit</option>
+                            <option value="6" <%= settings.otpLength === 6 ? 'selected' : '' %>>6 digit</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Template Pesan OTP</label>
+                        <textarea class="form-control" id="otpMessageTemplate" rows="3"><%= settings.otpMessageTemplate || 'Kode OTP Anda adalah: {otp}. Berlaku selama {expiry} menit.' %></textarea>
+                        <small class="text-muted">Gunakan {otp} untuk kode OTP dan {expiry} untuk masa berlaku dalam menit</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Simpan Pengaturan OTP
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- WhatsApp Gateway Settings -->
+        <div class="card mb-4">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0"><i class="fab fa-whatsapp me-2"></i>Pengaturan WhatsApp Gateway</h5>
+            </div>
+            <div class="card-body">
+                <form id="waGatewayForm">
+                    <div class="mb-3">
+                        <label class="form-label">Pilih Gateway</label>
+                        <select class="form-select" id="waGatewayType">
+                            <option value="fonnte" <%= settings.waGateway === 'fonnte' ? 'selected' : '' %>>Fonnte</option>
+                            <option value="mpwa" <%= settings.waGateway === 'mpwa' ? 'selected' : '' %>>MPWA</option>
+                            <option value="wablas" <%= settings.waGateway === 'wablas' ? 'selected' : '' %>>Wablas</option>
+                        </select>
+                    </div>
+
+                    <!-- Fonnte Settings -->
+                    <div id="fonnteSetting" class="gateway-setting <%= settings.waGateway === 'fonnte' ? '' : 'd-none' %>">
+                        <div class="mb-3">
+                            <label class="form-label">Fonnte API Key</label>
+                            <input type="password" class="form-control" id="fonnteApiKey" 
+                                   value="<%= settings.fonnteApiKey || '' %>">
+                        </div>
+                    </div>
+
+                    <!-- MPWA Settings -->
+                    <div id="mpwaSetting" class="gateway-setting <%= settings.waGateway === 'mpwa' ? '' : 'd-none' %>">
+                        <div class="mb-3">
+                            <label class="form-label">MPWA API URL</label>
+                            <input type="text" class="form-control" id="mpwaUrl" 
+                                   value="<%= settings.mpwaUrl || '' %>">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">MPWA API Key</label>
+                            <input type="password" class="form-control" id="mpwaApiKey" 
+                                   value="<%= settings.mpwaApiKey || '' %>">
+                        </div>
+                    </div>
+
+                    <!-- Wablas Settings -->
+                    <div id="wablasSetting" class="gateway-setting <%= settings.waGateway === 'wablas' ? '' : 'd-none' %>">
+                        <div class="mb-3">
+                            <label class="form-label">Wablas API URL</label>
+                            <input type="text" class="form-control" id="wablasUrl" 
+                                   value="<%= settings.wablasUrl || '' %>">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Wablas API Key</label>
+                            <input type="password" class="form-control" id="wablasApiKey" 
+                                   value="<%= settings.wablasApiKey || '' %>">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nomor Admin WhatsApp</label>
+                        <input type="text" class="form-control" id="adminWhatsapp" 
+                               placeholder="628xxxxxxxxxx" 
+                               value="<%= settings.adminWhatsapp || '' %>">
+                        <small class="text-muted">Format: 628xxxxxxxxxx (tanpa tanda + atau -)</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Simpan Pengaturan
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle gateway settings visibility
+        document.getElementById('waGatewayType').addEventListener('change', function() {
+            document.querySelectorAll('.gateway-setting').forEach(el => el.classList.add('d-none'));
+            document.getElementById(this.value + 'Setting').classList.remove('d-none');
+        });
+
+        // Handle OTP settings form submission
+        document.getElementById('otpSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const otpSettings = {
+                otpEnabled: document.getElementById('otpEnabled').checked,
+                otpExpiry: parseInt(document.getElementById('otpExpiry').value),
+                otpLength: parseInt(document.getElementById('otpLength').value),
+                otpMessageTemplate: document.getElementById('otpMessageTemplate').value
+            };
+
+            try {
+                const response = await fetch('/admin/settings/otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(otpSettings)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Pengaturan OTP berhasil disimpan');
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                alert('Gagal menyimpan pengaturan OTP: ' + error.message);
+            }
+        });
+
+        // Handle WhatsApp Gateway form submission
+        document.getElementById('waGatewayForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const settings = {
+                otpEnabled: document.getElementById('otpEnabled').checked,
+                waGateway: document.getElementById('waGatewayType').value,
+                adminWhatsapp: document.getElementById('adminWhatsapp').value,
+                fonnteApiKey: document.getElementById('fonnteApiKey').value,
+                mpwaUrl: document.getElementById('mpwaUrl').value,
+                mpwaApiKey: document.getElementById('mpwaApiKey').value,
+                wablasUrl: document.getElementById('wablasUrl').value,
+                wablasApiKey: document.getElementById('wablasApiKey').value
+            };
+
+            try {
+                const response = await fetch('/admin/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(settings)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Pengaturan berhasil disimpan');
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                alert('Gagal menyimpan pengaturan: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

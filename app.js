@@ -58,6 +58,31 @@ function generateOTP() {
 // Simpan OTP sementara (dalam praktik nyata sebaiknya gunakan database)
 const otpStore = new Map();
 
+// Load settings dari file
+const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+let settings = {};
+
+// Initialize settings file if it doesn't exist
+if (!fs.existsSync(SETTINGS_FILE)) {
+    settings = {
+        otpEnabled: true,
+        otpExpiry: 300,
+        otpLength: 6,
+        otpMessageTemplate: 'Kode OTP Anda untuk login WebPortal: {otp}. Kode ini berlaku selama {expiry} menit.'
+    };
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+} else {
+    settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
+}
+
+// Fungsi untuk generate OTP sesuai panjang yang diinginkan
+function generateOTP() {
+    const length = settings.otpLength || 6;
+    const min = Math.pow(10, length - 1);
+    const max = Math.pow(10, length) - 1;
+    return Math.floor(min + Math.random() * (max - min + 1));
+}
+
 // Fungsi untuk format nomor WhatsApp
 function formatWhatsAppNumber(number) {
     // Hapus semua spasi dan karakter non-digit
@@ -79,26 +104,84 @@ function formatWhatsAppNumber(number) {
     return number;
 }
 
-// Fungsi untuk kirim OTP via Fonnte
+// Fungsi untuk kirim OTP via WhatsApp Gateway
 async function sendOTP(customerNumber, otp) {
     try {
-        // Format nomor WhatsApp
         const formattedNumber = formatWhatsAppNumber(customerNumber);
+        const expiryMinutes = Math.floor(settings.otpExpiry / 60);
         
-        const response = await fetch('https://api.fonnte.com/send', {
-            method: 'POST',
-            headers: {
-                'Authorization': process.env.FONNTE_TOKEN,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                target: formattedNumber,
-                message: `Kode OTP Anda untuk login WebPortal: ${otp}. Kode ini berlaku selama 5 menit.`
-            })
-        });
-        return response.ok;
+        // Gunakan template pesan dari settings
+        let message = settings.otpMessageTemplate || 'Kode OTP Anda untuk login WebPortal: {otp}. Kode ini berlaku selama {expiry} menit.';
+        message = message.replace('{otp}', otp).replace('{expiry}', expiryMinutes);
+
+        let response;
+        
+        switch(settings.waGateway) {
+            case 'fonnte':
+                if (!settings.fonnteApiKey) {
+                    throw new Error('Fonnte API key tidak ditemukan');
+                }
+                response = await fetch('https://api.fonnte.com/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': settings.fonnteApiKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        target: formattedNumber,
+                        message: message
+                    })
+                });
+                break;
+
+            case 'mpwa':
+                if (!settings.mpwaApiKey || !settings.mpwaUrl) {
+                    throw new Error('MPWA API key atau URL tidak ditemukan');
+                }
+                response = await fetch(`${settings.mpwaUrl}/send-message`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${settings.mpwaApiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        phone: formattedNumber,
+                        message: message
+                    })
+                });
+                break;
+
+            case 'wablas':
+                if (!settings.wablasApiKey || !settings.wablasUrl) {
+                    throw new Error('Wablas API key atau URL tidak ditemukan');
+                }
+                response = await fetch(`${settings.wablasUrl}/api/send-message`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': settings.wablasApiKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        phone: formattedNumber,
+                        message: message
+                    })
+                });
+                break;
+
+            default:
+                throw new Error('Gateway WhatsApp tidak valid');
+        }
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            throw new Error(`Gagal mengirim OTP via ${settings.waGateway}: ${response.status} - ${errorData}`);
+        }
+
+        console.log(`OTP berhasil dikirim via ${settings.waGateway} ke ${formattedNumber}`);
+        return true;
+
     } catch (error) {
-        console.error('Error sending OTP:', error);
+        console.error('Error sending OTP:', error.message);
         return false;
     }
 }
@@ -142,17 +225,17 @@ app.post('/login', async (req, res) => {
                 tags: device._tags
             });
 
-            // Cek apakah OTP diaktifkan di .env
-            if (process.env.OTP_ENABLED === 'true') {
+            // Cek pengaturan OTP dari settings.json
+            if (settings.otpEnabled) {
                 // Generate dan kirim OTP
                 const otp = generateOTP();
                 const success = await sendOTP(username, otp);
                 
                 if (success) {
-                    // Simpan OTP dengan waktu kadaluarsa 5 menit
+                    // Simpan OTP dengan waktu kadaluarsa sesuai settings
                     otpStore.set(username, {
                         code: otp,
-                        expiry: Date.now() + (5 * 60 * 1000)
+                        expiry: Date.now() + (settings.otpExpiry * 1000)
                     });
                     // Redirect ke halaman verifikasi OTP
                     res.render('verify-otp', { username, error: null });
@@ -166,110 +249,55 @@ app.post('/login', async (req, res) => {
                 res.redirect('/dashboard');
             }
         } else {
-            // Debug: Log all devices and their tags
             console.log('No device found with tag:', username);
-            console.log('Available devices:', response.data.map(d => ({
-                id: d._id,
-                tags: d._tags || [],
-                rawDevice: JSON.stringify(d)
-            })));
-
             res.render('login', { error: 'Nomor pelanggan tidak ditemukan' });
         }
     } catch (error) {
         console.error('Login error:', error);
-        console.error('Full error details:', {
-            message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-            url: error.config?.url
-        });
         res.render('login', { error: 'Terjadi kesalahan saat login' });
     }
 });
 
-// Endpoint untuk verifikasi OTP
-app.post('/verify-otp', async (req, res) => {
-    const { username, otp } = req.body;
-    
-    // Verifikasi OTP
-    const storedOTP = otpStore.get(username);
-    console.log('Verifying OTP:', {
-        input: otp,
-        stored: storedOTP?.code,
-        expiry: storedOTP?.expiry,
-        now: Date.now(),
-        isExpired: storedOTP ? Date.now() > storedOTP.expiry : true
-    });
-
-    // Pastikan tipe data sama (string) saat membandingkan
-    if (!storedOTP || 
-        String(storedOTP.code) !== String(otp) || 
-        Date.now() > storedOTP.expiry) {
-        return res.render('verify-otp', { 
-            username, 
-            error: 'OTP tidak valid atau kadaluarsa' 
-        });
+// Endpoint untuk menyimpan pengaturan OTP
+app.post('/admin/settings/otp', async (req, res) => {
+    if (!req.session.isAdmin) {
+        return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Hapus OTP yang sudah digunakan
-    otpStore.delete(username);
-
     try {
-        console.log('Attempting to connect to GenieACS server...');
-        
-        // Get all devices first
-        const response = await axios.get(`${process.env.GENIEACS_URL}/devices`, {
-            auth: {
-                username: process.env.GENIEACS_USERNAME,
-                password: process.env.GENIEACS_PASSWORD
-            },
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
+        const { otpEnabled, otpExpiry, otpLength, otpMessageTemplate } = req.body;
 
-        console.log('Total devices:', response.data.length);
-
-        // Find device with matching tag
-        const device = response.data.find(d => {
-            console.log('Checking device:', {
-                id: d._id,
-                tags: d._tags,
-                rawDevice: JSON.stringify(d)
+        // Validasi input
+        if (typeof otpEnabled !== 'boolean' ||
+            !Number.isInteger(otpExpiry) ||
+            otpExpiry < 60 || otpExpiry > 3600 ||
+            ![4, 6].includes(otpLength) ||
+            !otpMessageTemplate) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Input tidak valid' 
             });
-            return d._tags && d._tags.includes(username);
-        });
-
-        if (device) {
-            console.log('Device found:', {
-                deviceId: device._id,
-                tags: device._tags
-            });
-            
-            req.session.username = username;
-            req.session.deviceId = device._id;
-            res.redirect('/dashboard');
-        } else {
-            // Debug: Log all devices and their tags
-            console.log('No device found with tag:', username);
-            console.log('Available devices:', response.data.map(d => ({
-                id: d._id,
-                tags: d._tags || [],
-                rawDevice: JSON.stringify(d)
-            })));
-
-            res.render('login', { error: 'Nomor pelanggan tidak ditemukan' });
         }
+
+        // Update settings
+        settings = {
+            ...settings,
+            otpEnabled,
+            otpExpiry,
+            otpLength,
+            otpMessageTemplate
+        };
+
+        // Simpan ke file
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+
+        res.json({ success: true });
     } catch (error) {
-        console.error('Login error:', error);
-        console.error('Full error details:', {
-            message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-            url: error.config?.url
+        console.error('Error saving OTP settings:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Gagal menyimpan pengaturan' 
         });
-        res.render('login', { error: 'Terjadi kesalahan saat menghubungi server' });
     }
 });
 
@@ -1133,6 +1161,74 @@ app.post('/update-customer-number', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Terjadi kesalahan saat mengupdate nomor pelanggan: ' + error.message 
+        });
+    }
+});
+
+// Pastikan route ini berada sebelum route lainnya dan setelah middleware session
+app.get('/admin/settings', async (req, res) => {
+    // Cek session admin
+    if (!req.session.isAdmin) {
+        return res.redirect('/login');
+    }
+
+    try {
+        let settings = {};
+        const settingsFile = path.join(__dirname, 'settings.json');
+
+        // Cek apakah file settings.json sudah ada
+        if (fs.existsSync(settingsFile)) {
+            settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        } else {
+            // Default settings jika file belum ada
+            settings = {
+                otpEnabled: true,
+                waGateway: 'fonnte',
+                adminWhatsapp: '',
+                fonnteApiKey: '',
+                mpwaUrl: '',
+                mpwaApiKey: '',
+                wablasUrl: '',
+                wablasApiKey: ''
+            };
+            // Buat file settings.json dengan default settings
+            fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+        }
+
+        res.render('settings', { settings });
+    } catch (error) {
+        console.error('Settings page error:', error);
+        res.status(500).send('Error loading settings: ' + error.message);
+    }
+});
+
+// Save settings endpoint
+app.post('/admin/settings', async (req, res) => {
+    if (!req.session.isAdmin) {
+        return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    try {
+        const settings = {
+            otpEnabled: Boolean(req.body.otpEnabled),
+            waGateway: req.body.waGateway,
+            adminWhatsapp: req.body.adminWhatsapp,
+            fonnteApiKey: req.body.fonnteApiKey,
+            mpwaUrl: req.body.mpwaUrl,
+            mpwaApiKey: req.body.mpwaApiKey,
+            wablasUrl: req.body.wablasUrl,
+            wablasApiKey: req.body.wablasApiKey
+        };
+
+        const settingsFile = path.join(__dirname, 'settings.json');
+        fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+
+        res.json({ success: true, message: 'Settings saved successfully' });
+    } catch (error) {
+        console.error('Save settings error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to save settings: ' + error.message 
         });
     }
 });
