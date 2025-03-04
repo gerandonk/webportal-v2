@@ -282,8 +282,8 @@
                                            placeholder="SSID" 
                                            value="<%= deviceData.ssid || deviceData.ssid2G || 'N/A' %>" 
                                            required>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-wifi"></i> Update SSID
+                                    <button type="submit" class="btn btn-primary" title="Update SSID">
+                                        <i class="fas fa-wifi"></i>
                                     </button>
                                 </div>
                                 <small class="text-muted">Perubahan SSID dan password berlaku untuk 2.4G dan 5G</small>
@@ -296,11 +296,11 @@
                                 <div class="input-group">
                                     <input type="password" name="password" class="form-control wifi-password" 
                                            placeholder="New Password" minlength="8" required>
-                                    <button type="button" class="btn btn-outline-secondary toggle-password">
+                                    <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide Password">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-key"></i> Update Password
+                                    <button type="submit" class="btn btn-primary" title="Update Password">
+                                        <i class="fas fa-key"></i>
                                     </button>
                                 </div>
                             </form>

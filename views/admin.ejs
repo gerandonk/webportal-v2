@@ -384,25 +384,29 @@
         </div>
 
         <!-- Search and Filter -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <input type="text" class="form-control search-box" id="searchInput" 
-                       placeholder="Search by Username or IP...">
-            </div>
-            <div class="col-md-3">
-                <select class="form-select filter-dropdown" id="statusFilter">
-                    <option value="all">All Status</option>
-                    <option value="online">Online</option>
-                    <option value="offline">Offline</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select class="form-select filter-dropdown" id="rxPowerFilter">
-                    <option value="all">All RX Power</option>
-                    <option value="good">Good (> -25dBm)</option>
-                    <option value="warning">Warning (-25 to -27dBm)</option>
-                    <option value="critical">Critical (< -27dBm)</option>
-                </select>
+        <div class="mb-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" 
+                           id="searchInput" 
+                           class="form-control" 
+                           placeholder="Search by PPPoE Username or Customer Number...">
+                </div>
+                <div class="col-md-4">
+                    <select id="statusFilter" class="form-select">
+                        <option value="all">All Status</option>
+                        <option value="online">Online</option>
+                        <option value="offline">Offline</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select id="rxPowerFilter" class="form-select">
+                        <option value="all">All RX Power</option>
+                        <option value="good">Good</option>
+                        <option value="warning">Warning</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -554,35 +558,42 @@
         });
 
         // Search and filter functionality
-        document.getElementById('searchInput').addEventListener('input', filterDevices);
-        document.getElementById('statusFilter').addEventListener('change', filterDevices);
-        document.getElementById('rxPowerFilter').addEventListener('change', filterDevices);
-
         function filterDevices() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
             const rxPowerFilter = document.getElementById('rxPowerFilter').value;
 
             document.querySelectorAll('.device-card').forEach(card => {
-                const username = card.querySelector('.card-title').textContent.toLowerCase();
-                const ip = card.querySelector('.col-6 span').textContent.toLowerCase();
-                const isOnline = card.querySelector('.status-online') !== null;
+                // Cari PPPoE username langsung dari elemen yang berisi PPPoE
+                const pppoeText = card.querySelector('.device-info:nth-child(2)')?.textContent || '';
+                const customerNumber = card.querySelector('input[placeholder="Customer Number"]')?.value || '';
+                
+                // Debug untuk melihat nilai yang dicari
+                console.log('PPPoE Text:', pppoeText);
+                console.log('Search Term:', searchTerm);
+
+                const isOnline = card.querySelector('.status-indicator.online') !== null;
                 const rxPowerEl = card.querySelector('.rx-power-good, .rx-power-warning, .rx-power-critical');
                 
                 let show = true;
 
                 // Search filter
-                if (searchTerm && !username.includes(searchTerm) && !ip.includes(searchTerm)) {
-                    show = false;
+                if (searchTerm) {
+                    // Cek apakah searchTerm ada dalam PPPoE text atau customer number
+                    const matchPPPoE = pppoeText.toLowerCase().includes(searchTerm);
+                    const matchCustomer = customerNumber.toLowerCase().includes(searchTerm);
+                    
+                    if (!matchPPPoE && !matchCustomer) {
+                        show = false;
+                    }
                 }
 
-                // Status filter
+                // Status dan RX Power filter tetap sama
                 if (statusFilter !== 'all') {
                     if (statusFilter === 'online' && !isOnline) show = false;
                     if (statusFilter === 'offline' && isOnline) show = false;
                 }
 
-                // RX Power filter
                 if (rxPowerFilter !== 'all' && rxPowerEl) {
                     const powerClass = rxPowerEl.className;
                     if (rxPowerFilter === 'good' && !powerClass.includes('good')) show = false;
@@ -905,6 +916,23 @@
                 alertDiv.remove();
             }, 5000);
         }
+
+        // Pastikan event listener terpasang dengan benar
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            const rxPowerFilter = document.getElementById('rxPowerFilter');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', filterDevices);
+            }
+            if (statusFilter) {
+                statusFilter.addEventListener('change', filterDevices);
+            }
+            if (rxPowerFilter) {
+                rxPowerFilter.addEventListener('change', filterDevices);
+            }
+        });
     </script>
 </body>
 </html>
