@@ -1,5 +1,27 @@
 # webportal
+Fitur admin <br>
+1. OTP bisa ON/OFF <br>
+2. Edit SSID<br>
+3. Edit Password<br>
+4. Edit No pelanggan<br>
+5. Otp fonnte  wablas dan MPWA<br>
+6. Support SSID 2.4g dan 5g<br>
+7. Data redaman<br>
+8. Reboot<br>
+9. Data user terkoneksi<br>
+10. Refresh / summon <br>
+Semua pengaturan bisa di dasboard admin<br>
 
+Fitur pelanggan<br>
+1. Ganti SSID 2.4g dan 5g<br>
+2. Ganti password 2.4g 5g
+3. Ganti Nomer Pelanggan<br>
+4. Data user  konek<br>
+5. Reboot ONU<br>
+6. Refresh ONU<br>
+
+
+# INSTALL
 ```
 apt install git curl -y
 ```
