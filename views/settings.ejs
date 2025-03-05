@@ -3,218 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengaturan Sistem</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Pengaturan Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .navbar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
         .card {
-            transition: transform 0.2s;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
-        .card:hover {
-            transform: translateY(-5px);
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+        .form-check {
+            margin-bottom: 15px;
+        }
+        .gateway-settings {
+            margin-top: 15px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .gateway-settings.inactive {
+            opacity: 0.6;
         }
     </style>
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/admin">
-                <i class="fas fa-cog me-2"></i>Pengaturan Sistem
-            </a>
-            <a href="/admin" class="btn btn-outline-light">
-                <i class="fas fa-arrow-left me-2"></i>Kembali
-            </a>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span class="navbar-brand">
+                <i class="fas fa-network-wired me-2"></i>ONT Monitoring
+            </span>
+            <div>
+                <ul class="navbar-nav flex-row">
+                    <li class="nav-item me-3">
+                        <a class="nav-link" href="/admin">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/logout">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </nav>
 
-    <div class="container my-4">
-        <!-- OTP Settings -->
-        <div class="card mb-4">
-            <div class="card-header bg-transparent">
-                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Pengaturan OTP</h5>
+    <div class="container mt-4">
+        <h2 class="mb-4"><i class="fas fa-cog me-2"></i>Pengaturan Sistem</h2>
+        
+        <% if (error) { %>
+            <div class="alert alert-danger">
+                <%= error %>
             </div>
-            <div class="card-body">
-                <form id="otpSettingsForm">
-                    <div class="mb-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="otpEnabled" 
-                                   <%= settings.otpEnabled ? 'checked' : '' %>>
-                            <label class="form-check-label" for="otpEnabled">Aktifkan OTP</label>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Masa Berlaku OTP (detik)</label>
-                        <input type="number" class="form-control" id="otpExpiry" 
-                               value="<%= settings.otpExpiry || 300 %>"
-                               min="60" max="3600">
-                        <small class="text-muted">Minimal 60 detik, maksimal 3600 detik (1 jam)</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Panjang Kode OTP</label>
-                        <select class="form-select" id="otpLength">
-                            <option value="4" <%= settings.otpLength === 4 ? 'selected' : '' %>>4 digit</option>
-                            <option value="6" <%= settings.otpLength === 6 ? 'selected' : '' %>>6 digit</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Template Pesan OTP</label>
-                        <textarea class="form-control" id="otpMessageTemplate" rows="3"><%= settings.otpMessageTemplate || 'Kode OTP Anda adalah: {otp}. Berlaku selama {expiry} menit.' %></textarea>
-                        <small class="text-muted">Gunakan {otp} untuk kode OTP dan {expiry} untuk masa berlaku dalam menit</small>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Simpan Pengaturan OTP
-                    </button>
-                </form>
+        <% } %>
+        
+        <% if (success) { %>
+            <div class="alert alert-success">
+                <%= success %>
             </div>
-        </div>
+        <% } %>
 
-        <!-- WhatsApp Gateway Settings -->
-        <div class="card mb-4">
-            <div class="card-header bg-transparent">
-                <h5 class="mb-0"><i class="fab fa-whatsapp me-2"></i>Pengaturan WhatsApp Gateway</h5>
+        <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="otp-tab" data-bs-toggle="tab" data-bs-target="#otp" type="button" role="tab" aria-controls="otp" aria-selected="true">
+                    <i class="fas fa-key me-2"></i>Pengaturan OTP
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="whatsapp-tab" data-bs-toggle="tab" data-bs-target="#whatsapp" type="button" role="tab" aria-controls="whatsapp" aria-selected="false">
+                    <i class="fab fa-whatsapp me-2"></i>WhatsApp Gateway
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="settingsTabsContent">
+            <!-- Tab OTP Settings -->
+            <div class="tab-pane fade show active" id="otp" role="tabpanel" aria-labelledby="otp-tab">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-key me-2"></i>Pengaturan OTP</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="otpSettingsForm">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="otpEnabled" <%= settings.otpEnabled ? 'checked' : '' %>>
+                                <label class="form-check-label" for="otpEnabled">Aktifkan Verifikasi OTP</label>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="otpExpiry" class="form-label">Masa Berlaku OTP (detik)</label>
+                                    <input type="number" class="form-control" id="otpExpiry" value="<%= settings.otpExpiry || 300 %>" min="60" max="3600">
+                                    <div class="form-text">Minimal 60 detik, maksimal 3600 detik (1 jam)</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="otpLength" class="form-label">Panjang OTP</label>
+                                    <select class="form-select" id="otpLength">
+                                        <option value="4" <%= settings.otpLength === 4 ? 'selected' : '' %>>4 digit</option>
+                                        <option value="6" <%= settings.otpLength === 6 ? 'selected' : '' %>>6 digit</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="otpMessage" class="form-label">Template Pesan OTP</label>
+                                <textarea class="form-control" id="otpMessage" rows="3"><%= settings.otpMessage || "Kode OTP Anda untuk login WebPortal: {{otp}}. Kode ini berlaku selama {{expiry}} menit." %></textarea>
+                                <div class="form-text">Gunakan {{otp}} untuk menempatkan kode OTP dan {{expiry}} untuk masa berlaku (dalam menit)</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="adminWhatsapp" class="form-label">Nomor WhatsApp Admin</label>
+                                <input type="text" class="form-control" id="adminWhatsapp" value="<%= settings.adminWhatsapp || '' %>" placeholder="628xxxxxxxxxx">
+                                <div class="form-text">Nomor WhatsApp admin untuk menerima pesan test (format: 628xxxxxxxxxx)</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Simpan Pengaturan OTP
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <form id="waGatewayForm">
-                    <div class="mb-3">
-                        <label class="form-label">Pilih Gateway</label>
-                        <select class="form-select" id="waGatewayType">
-                            <option value="fonnte" <%= settings.waGateway === 'fonnte' ? 'selected' : '' %>>Fonnte</option>
-                            <option value="mpwa" <%= settings.waGateway === 'mpwa' ? 'selected' : '' %>>MPWA</option>
-                            <option value="wablas" <%= settings.waGateway === 'wablas' ? 'selected' : '' %>>Wablas</option>
-                        </select>
+            
+            <!-- Tab WhatsApp Gateway Settings -->
+            <div class="tab-pane fade" id="whatsapp" role="tabpanel" aria-labelledby="whatsapp-tab">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fab fa-whatsapp me-2"></i>Pengaturan WhatsApp Gateway</h5>
                     </div>
-
-                    <!-- Fonnte Settings -->
-                    <div id="fonnteSetting" class="gateway-setting <%= settings.waGateway === 'fonnte' ? '' : 'd-none' %>">
-                        <div class="mb-3">
-                            <label class="form-label">Fonnte API Key</label>
-                            <input type="password" class="form-control" id="fonnteApiKey" 
-                                   value="<%= settings.fonnteApiKey || '' %>">
-                        </div>
+                    <div class="card-body">
+                        <form id="gatewaySettingsForm">
+                            <div class="mb-3">
+                                <label class="form-label">Pilih WhatsApp Gateway</label>
+                                <div class="form-check">
+                                    <input class="form-check-input gateway-radio" type="radio" name="whatsappGateway" id="fonnte" value="fonnte" <%= settings.whatsappGateway === 'fonnte' ? 'checked' : '' %>>
+                                    <label class="form-check-label" for="fonnte">
+                                        FONNTE
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input gateway-radio" type="radio" name="whatsappGateway" id="wablas" value="wablas" <%= settings.whatsappGateway === 'wablas' ? 'checked' : '' %>>
+                                    <label class="form-check-label" for="wablas">
+                                        WABLAS
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input gateway-radio" type="radio" name="whatsappGateway" id="mpwa" value="mpwa" <%= settings.whatsappGateway === 'mpwa' ? 'checked' : '' %>>
+                                    <label class="form-check-label" for="mpwa">
+                                        MPWA
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- FONNTE Settings -->
+                            <div id="fonnte-settings" class="gateway-settings <%= settings.whatsappGateway !== 'fonnte' ? 'inactive' : '' %>">
+                                <h6>Pengaturan FONNTE</h6>
+                                <div class="mb-3">
+                                    <label for="fonnte-token" class="form-label">API Token</label>
+                                    <input type="text" class="form-control" id="fonnte-token" value="<%= settings.gateways?.fonnte?.token || '' %>">
+                                    <div class="form-text">Dapatkan token di <a href="https://fonnte.com" target="_blank">fonnte.com</a></div>
+                                </div>
+                            </div>
+                            
+                            <!-- WABLAS Settings -->
+                            <div id="wablas-settings" class="gateway-settings <%= settings.whatsappGateway !== 'wablas' ? 'inactive' : '' %>">
+                                <h6>Pengaturan WABLAS</h6>
+                                <div class="mb-3">
+                                    <label for="wablas-token" class="form-label">API Token</label>
+                                    <input type="text" class="form-control" id="wablas-token" value="<%= settings.gateways?.wablas?.token || '' %>">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="wablas-server" class="form-label">Server URL</label>
+                                    <input type="text" class="form-control" id="wablas-server" value="<%= settings.gateways?.wablas?.serverUrl || 'https://solo.wablas.com/api' %>">
+                                </div>
+                            </div>
+                            
+                            <!-- MPWA Settings -->
+                            <div id="mpwa-settings" class="gateway-settings <%= settings.whatsappGateway !== 'mpwa' ? 'inactive' : '' %>">
+                                <h6>Pengaturan MPWA</h6>
+                                <div class="mb-3">
+                                    <label for="mpwa-token" class="form-label">API Token</label>
+                                    <input type="text" class="form-control" id="mpwa-token" value="<%= settings.gateways?.mpwa?.token || '' %>">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="mpwa-server" class="form-label">Server URL</label>
+                                    <input type="text" class="form-control" id="mpwa-server" value="<%= settings.gateways?.mpwa?.serverUrl || 'https://mpwa.id/api' %>">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="mpwa-sender" class="form-label">Sender</label>
+                                    <input type="text" class="form-control" id="mpwa-sender" value="<%= settings.gateways?.mpwa?.sender || '' %>">
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-save me-2"></i>Simpan Pengaturan Gateway
+                                </button>
+                                <button type="button" id="testGateway" class="btn btn-success">
+                                    <i class="fas fa-paper-plane me-2"></i>Test Gateway
+                                </button>
+                            </div>
+                        </form>
                     </div>
-
-                    <!-- MPWA Settings -->
-                    <div id="mpwaSetting" class="gateway-setting <%= settings.waGateway === 'mpwa' ? '' : 'd-none' %>">
-                        <div class="mb-3">
-                            <label class="form-label">MPWA API URL</label>
-                            <input type="text" class="form-control" id="mpwaUrl" 
-                                   value="<%= settings.mpwaUrl || '' %>">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">MPWA API Key</label>
-                            <input type="password" class="form-control" id="mpwaApiKey" 
-                                   value="<%= settings.mpwaApiKey || '' %>">
-                        </div>
-                    </div>
-
-                    <!-- Wablas Settings -->
-                    <div id="wablasSetting" class="gateway-setting <%= settings.waGateway === 'wablas' ? '' : 'd-none' %>">
-                        <div class="mb-3">
-                            <label class="form-label">Wablas API URL</label>
-                            <input type="text" class="form-control" id="wablasUrl" 
-                                   value="<%= settings.wablasUrl || '' %>">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Wablas API Key</label>
-                            <input type="password" class="form-control" id="wablasApiKey" 
-                                   value="<%= settings.wablasApiKey || '' %>">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Nomor Admin WhatsApp</label>
-                        <input type="text" class="form-control" id="adminWhatsapp" 
-                               placeholder="628xxxxxxxxxx" 
-                               value="<%= settings.adminWhatsapp || '' %>">
-                        <small class="text-muted">Format: 628xxxxxxxxxx (tanpa tanda + atau -)</small>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Simpan Pengaturan
-                    </button>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Toggle gateway settings visibility
-        document.getElementById('waGatewayType').addEventListener('change', function() {
-            document.querySelectorAll('.gateway-setting').forEach(el => el.classList.add('d-none'));
-            document.getElementById(this.value + 'Setting').classList.remove('d-none');
-        });
-
-        // Handle OTP settings form submission
-        document.getElementById('otpSettingsForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        $(document).ready(function() {
+            // Toggle gateway settings visibility
+            $('.gateway-radio').change(function() {
+                const selectedGateway = $('input[name="whatsappGateway"]:checked').val();
+                $('.gateway-settings').addClass('inactive');
+                $(`#${selectedGateway}-settings`).removeClass('inactive');
+            });
             
-            const otpSettings = {
-                otpEnabled: document.getElementById('otpEnabled').checked,
-                otpExpiry: parseInt(document.getElementById('otpExpiry').value),
-                otpLength: parseInt(document.getElementById('otpLength').value),
-                otpMessageTemplate: document.getElementById('otpMessageTemplate').value
-            };
-
-            try {
-                const response = await fetch('/admin/settings/otp', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(otpSettings)
-                });
-
-                const data = await response.json();
+            // Handle OTP Settings Form Submit
+            $('#otpSettingsForm').submit(function(e) {
+                e.preventDefault();
                 
-                if (data.success) {
-                    alert('Pengaturan OTP berhasil disimpan');
-                } else {
-                    throw new Error(data.message);
+                const otpEnabled = $('#otpEnabled').is(':checked');
+                const otpExpiry = parseInt($('#otpExpiry').val());
+                const otpLength = parseInt($('#otpLength').val());
+                const otpMessage = $('#otpMessage').val();
+                const adminWhatsapp = $('#adminWhatsapp').val();
+                
+                // Validasi
+                if (otpExpiry < 60 || otpExpiry > 3600) {
+                    alert('Masa berlaku OTP harus antara 60-3600 detik');
+                    return;
                 }
-            } catch (error) {
-                alert('Gagal menyimpan pengaturan OTP: ' + error.message);
-            }
-        });
-
-        // Handle WhatsApp Gateway form submission
-        document.getElementById('waGatewayForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+                
+                if (![4, 6].includes(otpLength)) {
+                    alert('Panjang OTP harus 4 atau 6 digit');
+                    return;
+                }
+                
+                // Kirim data ke server
+                $.ajax({
+                    url: '/admin/save-otp-settings',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        otpEnabled,
+                        otpExpiry,
+                        otpLength,
+                        otpMessage,
+                        adminWhatsapp
+                    }),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Pengaturan OTP berhasil disimpan');
+                        } else {
+                            alert('Gagal menyimpan pengaturan: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Terjadi kesalahan: ' + (xhr.responseJSON?.message || xhr.statusText));
+                    }
+                });
+            });
             
-            const settings = {
-                otpEnabled: document.getElementById('otpEnabled').checked,
-                waGateway: document.getElementById('waGatewayType').value,
-                adminWhatsapp: document.getElementById('adminWhatsapp').value,
-                fonnteApiKey: document.getElementById('fonnteApiKey').value,
-                mpwaUrl: document.getElementById('mpwaUrl').value,
-                mpwaApiKey: document.getElementById('mpwaApiKey').value,
-                wablasUrl: document.getElementById('wablasUrl').value,
-                wablasApiKey: document.getElementById('wablasApiKey').value
-            };
-
-            try {
-                const response = await fetch('/admin/settings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(settings)
-                });
-
-                const data = await response.json();
+            // Handle Gateway Settings Form Submit
+            $('#gatewaySettingsForm').submit(function(e) {
+                e.preventDefault();
                 
-                if (data.success) {
-                    alert('Pengaturan berhasil disimpan');
-                } else {
-                    throw new Error(data.message);
+                const whatsappGateway = $('input[name="whatsappGateway"]:checked').val();
+                
+                // Siapkan data gateway
+                const gateways = {
+                    fonnte: {
+                        token: $('#fonnte-token').val(),
+                        enabled: whatsappGateway === 'fonnte'
+                    },
+                    wablas: {
+                        token: $('#wablas-token').val(),
+                        serverUrl: $('#wablas-server').val(),
+                        enabled: whatsappGateway === 'wablas'
+                    },
+                    mpwa: {
+                        token: $('#mpwa-token').val(),
+                        serverUrl: $('#mpwa-server').val(),
+                        sender: $('#mpwa-sender').val(),
+                        enabled: whatsappGateway === 'mpwa'
+                    }
+                };
+                
+                // Kirim data ke server
+                $.ajax({
+                    url: '/admin/save-gateway-settings',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        whatsappGateway,
+                        gateways
+                    }),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Pengaturan gateway berhasil disimpan');
+                        } else {
+                            alert('Gagal menyimpan pengaturan: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Terjadi kesalahan: ' + (xhr.responseJSON?.message || xhr.statusText));
+                    }
+                });
+            });
+            
+            // Test Gateway
+            $('#testGateway').click(function() {
+                if (!confirm('Apakah Anda yakin ingin mengirim pesan test ke nomor admin?')) {
+                    return;
                 }
-            } catch (error) {
-                alert('Gagal menyimpan pengaturan: ' + error.message);
-            }
+                
+                $.ajax({
+                    url: '/admin/test-gateway',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({}),
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Test berhasil! Pesan telah dikirim ke nomor admin.');
+                        } else {
+                            alert('Test gagal: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Terjadi kesalahan: ' + (xhr.responseJSON?.message || xhr.statusText));
+                    }
+                });
+            });
         });
     </script>
 </body>

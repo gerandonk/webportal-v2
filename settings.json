@@ -1,13 +1,25 @@
 {
-  "otpEnabled": true,
+  "otpEnabled": false,
   "otpExpiry": 300,
-  "otpLength": 6,
-  "otpMessageTemplate": "Kode OTP Anda untuk login WebPortal: {otp}. Kode ini berlaku selama {expiry} menit.",
-  "waGateway": "fonnte",
-  "adminWhatsapp": "",
-  "fonnteApiKey": "",
-  "mpwaUrl": "",
-  "mpwaApiKey": "",
-  "wablasUrl": "",
-  "wablasApiKey": ""
+  "otpLength": 4,
+  "whatsappGateway": "fonnte",
+  "adminWhatsapp": "6287820851413",
+  "gateways": {
+    "fonnte": {
+      "token": "",
+      "enabled": false
+    },
+    "wablas": {
+      "token": "",
+      "serverUrl": "https://solo.wablas.com/api",
+      "enabled": false
+    },
+    "mpwa": {
+      "token": "",
+      "serverUrl": "https://mpwa.id/api",
+      "sender": "",
+      "enabled": false
+    }
+  },
+  "otpMessage": "Kode OTP Anda untuk login WebPortal: {{otp}}. Kode ini berlaku selama {{expiry}} menit. ALIJAYA-NET"
 }
