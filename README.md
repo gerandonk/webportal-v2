@@ -34,9 +34,7 @@ git clone https://github.com/alijayanet/webportal
 ```
 cd webportal
 ```
-```
-npm install pm2 -g
-```
+
 CATATAN <br>
 edit file env example sesuai dengan server anda <br>
 
@@ -55,6 +53,9 @@ lalu di rename menjadi .env <br>
 
 ```
 npm install
+```
+```
+pm2 start app.js
 ```
 
 untuk membuka aplikasi admin <br>
