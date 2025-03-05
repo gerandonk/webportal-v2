@@ -26,10 +26,16 @@ Fitur pelanggan<br>
 apt install git curl -y
 ```
 ```
+npm install pm2 -g
+```
+```
 git clone https://github.com/alijayanet/webportal
 ```
 ```
 cd webportal
+```
+```
+npm install pm2 -g
 ```
 CATATAN <br>
 edit file env example sesuai dengan server anda <br>
@@ -50,9 +56,7 @@ lalu di rename menjadi .env <br>
 ```
 npm install
 ```
-```
-node app.js
-```
+
 untuk membuka aplikasi admin <br>
 http://192.168.8.xx:4000/admin <br>
 untuk pelanggan <br>
@@ -71,6 +75,6 @@ atau link group telegram
 
 https://t.me/alijayaNetAcs
 
-SILAHKAN YANG INGIN BERBAGI UANG KOPI
+SILAHKAN YANG INGIN BERBAGI
 
 ![Image](https://github.com/user-attachments/assets/724e5ac2-626e-4f2d-bd1f-1265b70b544f)
