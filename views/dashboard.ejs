@@ -386,34 +386,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Periksa status aktivasi saat halaman dimuat
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                const response = await fetch('/check-pro-status');
-                const data = await response.json();
-                
-                if (data.expired) {
-                    // Buat elemen alert
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'alert alert-warning alert-dismissible fade show';
-                    alertDiv.setAttribute('role', 'alert');
-                    
-                    const messageText = data.message || 'File aktivasi sudah tidak valid. Silakan hubungi administrator untuk mendapatkan file aktivasi terbaru.';
-                    alertDiv.innerHTML = `
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Perhatian!</strong> ${messageText}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    `;
-                    
-                    // Tambahkan alert ke bagian atas container
-                    const container = document.querySelector('.container');
-                    container.insertBefore(alertDiv, container.firstChild);
-                }
-            } catch (error) {
-                console.error('Error checking activation status:', error);
-            }
-        });
-
         // Toggle Password Visibility untuk 2.4G
         document.querySelector('.toggle-password-2g').addEventListener('click', function() {
             const passwordInput = this.closest('.input-group').querySelector('.wifi-password-2g');

@@ -6,8 +6,8 @@
   "adminWhatsapp": "6287820851413",
   "gateways": {
     "fonnte": {
-      "token": "",
-      "enabled": false
+      "token": "wik2cbw4NaURsKqycqL6",
+      "enabled": true
     },
     "wablas": {
       "token": "",

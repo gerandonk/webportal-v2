@@ -24,8 +24,6 @@ app.use(session({
 
 const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
-// Versi yang diperlukan untuk file aktivasi
-const REQUIRED_ACTIVATION_VERSION = '2.0';
 
 // Initialize settings file if it doesn't exist
 if (!fs.existsSync(SETTINGS_FILE)) {
@@ -1291,10 +1289,6 @@ app.post('/activate-pro', (req, res) => {
             const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
             proStatus.isPro = true;
             proStatus.activatedAt = new Date().toISOString();
-            
-            // Tambahkan versi
-            proStatus.version = REQUIRED_ACTIVATION_VERSION;
-            
             fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
             res.json({ success: true });
         } catch (error) {
@@ -1321,16 +1315,6 @@ app.get('/check-pro-status', (req, res) => {
     
     try {
         const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-        
-        // Periksa versi file (minimal harus versi 2.0)
-        if (!proStatus.version || proStatus.version !== REQUIRED_ACTIVATION_VERSION) {
-            return res.json({ 
-                isPro: false, 
-                expired: true,
-                message: 'Versi file aktivasi tidak valid. Silakan hubungi administrator untuk mendapatkan file aktivasi terbaru.'
-            });
-        }
-        
         res.json({ isPro: proStatus.isPro || false });
     } catch (error) {
         console.error('Error saat memeriksa status PRO:', error);
