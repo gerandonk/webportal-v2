@@ -64,6 +64,7 @@ untuk pelanggan <br>
 http://192.168.8.xx:4000 <br>
 
 # versi TRIAL <br>
+hanya bisa akses webportal pelanggan <br>
 http://192.168.8.xx:4000 <br>
 
 demo
