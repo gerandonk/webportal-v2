@@ -58,9 +58,12 @@ npm install
 pm2 start app.js
 ```
 
-untuk membuka aplikasi admin <br>
+# versi PRO <br>
 http://192.168.8.xx:4000/admin <br>
 untuk pelanggan <br>
+http://192.168.8.xx:4000 <br>
+
+# versi TRIAL <br>
 http://192.168.8.xx:4000 <br>
 
 demo
