@@ -111,24 +111,23 @@
 
         <p class="info-text">
             Silakan masukkan kode OTP yang dikirim ke WhatsApp Anda<br>
-            Kode berlaku selama <%= otpExpiry %> menit
+            Kode berlaku selama 5 menit
         </p>
         
         <form action="/verify-otp" method="POST" id="otpForm">
             <input type="hidden" name="username" value="<%= username %>">
-            <input type="hidden" id="otpLength" value="<%= otpLength %>">
             <div class="otp-input-group">
                 <input type="text" 
                        class="form-control" 
                        name="otp" 
                        id="otpInput"
-                       placeholder="<%= '0'.repeat(otpLength) %>"
-                       maxlength="<%= otpLength %>"
-                       pattern="[0-9]{<%= otpLength %>}"
+                       placeholder="000000"
+                       maxlength="6"
+                       pattern="[0-9]{6}"
                        inputmode="numeric"
                        autocomplete="one-time-code"
                        required>
-                <div class="otp-error">Masukkan <%= otpLength %> digit angka</div>
+                <div class="otp-error">Masukkan 6 digit angka</div>
             </div>
             <button type="submit" class="btn btn-verify btn-block w-100" id="verifyButton" disabled>
                 <i class="fas fa-check-circle me-2"></i>Verifikasi
@@ -149,7 +148,6 @@
             const otpForm = document.getElementById('otpForm');
             const verifyButton = document.getElementById('verifyButton');
             const otpError = document.querySelector('.otp-error');
-            const otpLength = parseInt(document.getElementById('otpLength').value);
 
             // Hanya terima input angka
             otpInput.addEventListener('input', function(e) {
@@ -157,10 +155,10 @@
                 this.value = this.value.replace(/\D/g, '');
                 
                 // Update status button
-                verifyButton.disabled = this.value.length !== otpLength;
+                verifyButton.disabled = this.value.length !== 6;
                 
                 // Tampilkan/sembunyikan pesan error
-                if (this.value.length > 0 && this.value.length < otpLength) {
+                if (this.value.length > 0 && this.value.length < 6) {
                     otpError.style.display = 'block';
                 } else {
                     otpError.style.display = 'none';
@@ -173,9 +171,8 @@
             // Validasi sebelum submit
             otpForm.addEventListener('submit', function(e) {
                 const otp = otpInput.value;
-                const regex = new RegExp(`^\\d{${otpLength}}$`);
                 
-                if (!regex.test(otp)) {
+                if (!/^\d{6}$/.test(otp)) {
                     e.preventDefault();
                     otpError.style.display = 'block';
                     otpInput.focus();

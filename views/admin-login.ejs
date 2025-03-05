@@ -71,7 +71,7 @@
             
             // If token field is visible and has value, validate it
             if (document.getElementById('token-container').style.display !== 'none' && token) {
-                fetch('/activate-pro', {
+                fetch('/set-pro-status', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -85,12 +85,8 @@
                         document.getElementById('token-container').style.display = 'none';
                         this.submit();
                     } else {
-                        alert(data.message || 'TOKEN tidak valid. Silakan masukkan TOKEN yang benar.');
+                        alert('TOKEN tidak valid. Silakan masukkan TOKEN yang benar.');
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Terjadi kesalahan saat aktivasi. Silakan coba lagi.');
                 });
             } else {
                 // If token container is hidden (already PRO) or no token entered
