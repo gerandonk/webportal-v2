@@ -86,22 +86,50 @@
                            class="form-control" 
                            id="username" 
                            name="username" 
-                           placeholder="081234567890 atau 6281234567890"
+                           placeholder="081234567890"
                            pattern="[0-9]+"
                            title="Masukkan nomor WhatsApp tanpa spasi atau karakter khusus"
                            required>
                 </div>
             </div>
             <small class="text-muted d-block text-center mb-3">
-                Masukkan nomor WhatsApp dengan format 08 atau 628
+                Apabila belum terdaftar menghubungi admin
             </small>
             <button type="submit" class="btn btn-login btn-block w-100 mt-4">
                 <i class="fas fa-sign-in-alt me-2"></i> Masuk
             </button>
         </form>
+        
+        <!-- Pesan aktivasi expired -->
+        <div id="activation-expired" class="alert alert-warning mt-3" style="display: none;">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span id="activation-message">File aktivasi sudah tidak valid. Silakan hubungi administrator untuk mendapatkan file aktivasi terbaru.</span>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/pwa.js"></script>
+    <script>
+        // Periksa status aktivasi saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/check-pro-status');
+                const data = await response.json();
+                
+                if (data.expired) {
+                    const expiredDiv = document.getElementById('activation-expired');
+                    const messageSpan = document.getElementById('activation-message');
+                    
+                    if (data.message) {
+                        messageSpan.textContent = data.message;
+                    }
+                    
+                    expiredDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error checking activation status:', error);
+            }
+        });
+    </script>
 </body>
 </html>
