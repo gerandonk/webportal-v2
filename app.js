@@ -1322,7 +1322,7 @@ app.get('/check-pro-status', (req, res) => {
     try {
         const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
         
-        // Periksa versi file (minimal harus versi 2.0)
+        // Periksa versi file 
         if (!proStatus.version || proStatus.version !== REQUIRED_ACTIVATION_VERSION) {
             return res.json({ 
                 isPro: false, 
