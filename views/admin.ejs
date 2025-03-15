@@ -352,6 +352,7 @@
                 <i class="fas fa-sync-alt me-2"></i>Refresh All Devices
             </button>
         </div>
+
         <!-- Statistics Summary -->
         <div class="row mb-4">
             <div class="col-md-3">
@@ -399,7 +400,7 @@
                     <input type="text" 
                            id="searchInput" 
                            class="form-control" 
-                           placeholder="Search by PPPoE Username or Customer Number...">
+                           placeholder="Cari berdasarkan PPPoE Username atau Nomor Pelanggan...">
                 </div>
                 <div class="col-md-4">
                     <select id="statusFilter" class="form-select">
@@ -523,12 +524,30 @@
             </div>
         <% } else { %>
             <div class="alert alert-info" role="alert">
-                Tidak ada perangkat yang ditemukan
+                Tidak ada perangkat yang ditemukan. Harap periksa <a href="/admin/settings" class="alert-link">pengaturan GenieACS</a> untuk memastikan konfigurasi sudah benar.
             </div>
         <% } %>
     </div>
 
     <script>
+        // Helper function untuk selector :contains
+        // Karena :contains tidak tersedia secara native di JavaScript
+        document.querySelectorAll = (function(querySelectorAll) {
+            return function(selector) {
+                if (selector.includes(':contains')) {
+                    const parts = selector.split(':contains');
+                    const baseSelector = parts[0];
+                    const searchText = parts[1].replace(/[()]/g, '').trim();
+                    
+                    const elements = querySelectorAll.call(this, baseSelector);
+                    return Array.from(elements).filter(el => 
+                        el.textContent.includes(searchText)
+                    );
+                }
+                return querySelectorAll.call(this, selector);
+            };
+        })(document.querySelectorAll);
+
         // Helper function untuk RX Power class
         function getRxPowerClass(rxPower) {
             if (!rxPower) return '';
@@ -573,24 +592,35 @@
             const rxPowerFilter = document.getElementById('rxPowerFilter').value;
 
             document.querySelectorAll('.device-card').forEach(card => {
-                // Cari PPPoE username langsung dari elemen yang berisi PPPoE
-                const pppoeText = card.querySelector('.device-info:nth-child(2)')?.textContent || '';
-                const customerNumber = card.querySelector('input[placeholder="Customer Number"]')?.value || '';
+                // Cari PPPoE username dengan lebih tepat
+                const deviceInfoElements = card.querySelectorAll('.device-info');
+                let pppoeText = '';
                 
-                // Debug untuk melihat nilai yang dicari
-                console.log('PPPoE Text:', pppoeText);
-                console.log('Search Term:', searchTerm);
-
-                const isOnline = card.querySelector('.status-indicator.online') !== null;
-                const rxPowerEl = card.querySelector('.rx-power-good, .rx-power-warning, .rx-power-critical');
+                // Cari elemen yang berisi "PPPoE:"
+                deviceInfoElements.forEach(el => {
+                    if (el.textContent.includes('PPPoE:')) {
+                        pppoeText = el.textContent.toLowerCase();
+                    }
+                });
+                
+                const customerNumber = card.querySelector('input[placeholder="Customer Number"]')?.value || '';
                 
                 let show = true;
 
                 // Search filter
                 if (searchTerm) {
                     // Cek apakah searchTerm ada dalam PPPoE text atau customer number
-                    const matchPPPoE = pppoeText.toLowerCase().includes(searchTerm);
+                    const matchPPPoE = pppoeText.includes(searchTerm);
                     const matchCustomer = customerNumber.toLowerCase().includes(searchTerm);
+                    
+                    // Debug log
+                    console.log('Searching:', {
+                        searchTerm,
+                        pppoeText,
+                        customerNumber,
+                        matchPPPoE,
+                        matchCustomer
+                    });
                     
                     if (!matchPPPoE && !matchCustomer) {
                         show = false;
@@ -599,12 +629,14 @@
 
                 // Status dan RX Power filter tetap sama
                 if (statusFilter !== 'all') {
+                    const isOnline = card.querySelector('.status-indicator.online') !== null;
                     if (statusFilter === 'online' && !isOnline) show = false;
                     if (statusFilter === 'offline' && isOnline) show = false;
                 }
 
-                if (rxPowerFilter !== 'all' && rxPowerEl) {
-                    const powerClass = rxPowerEl.className;
+                if (rxPowerFilter !== 'all') {
+                    const rxPowerEl = card.querySelector('.rx-power-good, .rx-power-warning, .rx-power-critical');
+                    const powerClass = rxPowerEl ? rxPowerEl.className : '';
                     if (rxPowerFilter === 'good' && !powerClass.includes('good')) show = false;
                     if (rxPowerFilter === 'warning' && !powerClass.includes('warning')) show = false;
                     if (rxPowerFilter === 'critical' && !powerClass.includes('critical')) show = false;
@@ -751,17 +783,18 @@
         // Toggle Password Visibility
         document.querySelectorAll('.toggle-password').forEach(button => {
             button.addEventListener('click', function() {
-                const passwordInput = this.closest('.input-group').querySelector('.wifi-password');
-                const eyeIcon = this.querySelector('i');
+                const passwordInput = this.previousElementSibling;
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
                 
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    eyeIcon.classList.remove('fa-eye');
-                    eyeIcon.classList.add('fa-eye-slash');
+                // Ganti icon
+                const icon = this.querySelector('i');
+                if (type === 'password') {
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
                 } else {
-                    passwordInput.type = 'password';
-                    eyeIcon.classList.remove('fa-eye-slash');
-                    eyeIcon.classList.add('fa-eye');
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
                 }
             });
         });
@@ -928,19 +961,51 @@
 
         // Pastikan event listener terpasang dengan benar
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up event listeners');
+            
             const searchInput = document.getElementById('searchInput');
             const statusFilter = document.getElementById('statusFilter');
             const rxPowerFilter = document.getElementById('rxPowerFilter');
 
             if (searchInput) {
-                searchInput.addEventListener('input', filterDevices);
+                console.log('Search input found, attaching event listener');
+                searchInput.addEventListener('input', function() {
+                    console.log('Search input changed:', this.value);
+                    filterDevices();
+                });
+            } else {
+                console.error('Search input not found!');
             }
+            
             if (statusFilter) {
                 statusFilter.addEventListener('change', filterDevices);
             }
+            
             if (rxPowerFilter) {
                 rxPowerFilter.addEventListener('change', filterDevices);
             }
+            
+            // Panggil filterDevices sekali untuk inisialisasi
+            filterDevices();
+        });
+
+        // Inisialisasi toggle password untuk semua input password
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', function() {
+                const passwordInput = this.previousElementSibling;
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                // Ganti icon
+                const icon = this.querySelector('i');
+                if (type === 'password') {
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                } else {
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                }
+            });
         });
     </script>
 </body>
