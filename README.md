@@ -21,42 +21,7 @@ Fitur pelanggan<br>
 6. Refresh ONU<br>
 
 
-# INSTALL
-```
-apt install git curl -y
-```
-```
-npm install pm2 -g
-```
-```
-git clone https://github.com/alijayanet/webportal
-```
-```
-cd webportal
-```
 
-CATATAN <br>
-edit file env example sesuai dengan server anda <br>
-
-PORT=4000 // port webportal<br>
-
-GenieACS Configuration<br>
-GENIEACS_URL=http://192.168.8.xxx:7557 // url GenieACS API<br>
-GENIEACS_USERNAME=admin // username GenieACS<br>
-GENIEACS_PASSWORD=admin // password GenieACS<br>
-
-Admin Configuration<br>
-ADMIN_USERNAME=admin // username admin<br>
-ADMIN_PASSWORD=admin // password admin<br>
-
-lalu di rename menjadi .env <br>
-
-```
-npm install
-```
-```
-pm2 start app.js
-```
 
 # versi PRO <br>
 http://192.168.8.xx:4000/admin <br>
