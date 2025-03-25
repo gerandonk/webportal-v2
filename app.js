@@ -24,8 +24,6 @@ app.use(session({
 
 const PRO_STATUS_FILE = path.join(__dirname, 'pro-status.json');
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
-// Versi yang diperlukan untuk file aktivasi
-const REQUIRED_ACTIVATION_VERSION = '2.0';
 
 // Initialize settings file if it doesn't exist
 if (!fs.existsSync(SETTINGS_FILE)) {
@@ -234,100 +232,34 @@ async function sendViaMpwa(phoneNumber, message) {
     try {
         const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE));
         const token = settings.gateways.mpwa.token;
+        const serverUrl = settings.gateways.mpwa.serverUrl;
         const sender = settings.gateways.mpwa.sender || 'default';
         
-        if (!token) {
-            console.error('MPWA token tidak dikonfigurasi');
+        if (!token || !serverUrl) {
+            console.error('MPWA token atau server URL tidak dikonfigurasi');
             return false;
         }
         
-        console.log('Mengirim MPWA ke:', {
-            nomor: phoneNumber,
-            sender: sender
+        // Berdasarkan dokumentasi PHP yang diberikan
+        const response = await fetch(`${serverUrl}/send-message`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'api_key': token,
+                'sender': sender,
+                'number': phoneNumber,
+                'message': message
+            })
         });
-
-        // Format nomor dengan benar (format 62xxx)
-        let targetNumber = phoneNumber;
-        if (!targetNumber.startsWith('62')) {
-            if (targetNumber.startsWith('0')) {
-                targetNumber = '62' + targetNumber.substring(1);
-            } else {
-                targetNumber = '62' + targetNumber;
-            }
-        }
         
-        console.log('Format nomor MPWA:', targetNumber);
+        const data = await response.json();
+        console.log('MPWA response:', data);
         
-        try {
-            // URL endpoint yang tetap
-            const endpoint = 'https://wa.parabolaku.id/send-message';
-            
-            // Gunakan format JSON sesuai contoh yang diberikan
-            const requestBody = {
-                api_key: token,
-                sender: sender,
-                number: targetNumber,
-                message: message,
-                footer: "ALIJAYA-NET"
-            };
-            
-            console.log('MPWA JSON data:', JSON.stringify(requestBody));
-            console.log('MPWA endpoint:', endpoint);
-            
-            // Kirim request dengan format JSON
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            });
-            
-            console.log('MPWA response status:', response.status, response.statusText);
-            
-            // Ambil response text
-            const responseText = await response.text();
-            console.log('MPWA raw response:', responseText);
-            
-            // Coba parse JSON jika memungkinkan
-            try {
-                const jsonResponse = JSON.parse(responseText);
-                console.log('MPWA JSON response:', jsonResponse);
-                
-                // Cek status dari respons
-                if (jsonResponse && typeof jsonResponse === 'object') {
-                    // Format respons bisa bervariasi
-                    if (jsonResponse.status === true || 
-                        jsonResponse.status === 'true' || 
-                        jsonResponse.status === 'success' || 
-                        jsonResponse.success === true) {
-                        console.log('MPWA success response detected');
-                        return true;
-                    }
-                    
-                    console.log('MPWA failure detected in response:', jsonResponse);
-                    return false;
-                }
-            } catch (jsonError) {
-                console.error('MPWA JSON parse error:', jsonError);
-                
-                // Fallback: cek text response
-                if (responseText.toLowerCase().includes('success') || 
-                    responseText.toLowerCase().includes('berhasil')) {
-                    return true;
-                }
-                
-                return false;
-            }
-            
-            return false;
-        } catch (error) {
-            console.error('MPWA request error:', error);
-            return false;
-        }
+        return data.status === 'success' || data.status === 'true' || data.status === true;
     } catch (error) {
-        console.error('MPWA general error:', error);
+        console.error('Error sending via MPWA:', error);
         return false;
     }
 }
@@ -685,15 +617,12 @@ app.get('/dashboard', async (req, res) => {
             manufacturer: device.DeviceID?.Manufacturer || 'N/A'
         };
 
-        // Digunakan array kosong dulu, data akan diambil secara asinkron melalui API
-        let connectedUsers = [];
-
         // Clean up model name if needed
         deviceData.model = deviceData.model.replace('%2D', '-');
 
         console.log('Processed device data:', deviceData);
 
-        res.render('dashboard', { deviceData, connectedUsers, error: null });
+        res.render('dashboard', { deviceData, error: null });
 
     } catch (error) {
         console.error('Dashboard error:', error);
@@ -721,212 +650,7 @@ app.get('/dashboard', async (req, res) => {
                 statusColor: '#99ccff',
                 lastInform: 'N/A'
             },
-            connectedUsers: [], // Menambahkan variabel connectedUsers (array kosong)
             error: `Gagal mengambil data perangkat: ${error.message}`
-        });
-    }
-});
-
-// Endpoint baru untuk mendapatkan data perangkat terhubung
-app.get('/api/connected-devices', async (req, res) => {
-    if (!req.session.username || !req.session.deviceId) {
-        return res.status(401).json({ success: false, message: 'Tidak terautentikasi' });
-    }
-
-    try {
-        const deviceId = req.query.deviceId || req.session.deviceId;
-        const username = req.session.username;
-        
-        console.log(`Mendapatkan data perangkat untuk user: ${username}, device: ${deviceId}`);
-        
-        // Coba mendapatkan data langsung dari GenieACS
-        let realDeviceData = null;
-        let connectedUsers = [];
-        let usingRealData = false;
-        
-        try {
-            const encodedQuery = encodeURIComponent(JSON.stringify({ "_id": deviceId }));
-            console.log(`Mencoba langsung query GenieACS: ${process.env.GENIEACS_URL}/devices/?query=${encodedQuery}`);
-            
-            const deviceResponse = await axios.get(`${process.env.GENIEACS_URL}/devices/?query=${encodedQuery}`, {
-                auth: {
-                    username: process.env.GENIEACS_USERNAME,
-                    password: process.env.GENIEACS_PASSWORD
-                },
-                headers: {
-                    'Accept': 'application/json'
-                },
-                timeout: 3000 // Timeout 3 detik agar tidak terlalu lama
-            });
-            
-            if (deviceResponse.data && deviceResponse.data.length > 0) {
-                realDeviceData = deviceResponse.data[0];
-                console.log('Data device dari GenieACS berhasil didapat');
-                
-                // Jika berhasil mendapatkan data perangkat, coba ambil data host
-                if (realDeviceData.InternetGatewayDevice && 
-                    realDeviceData.InternetGatewayDevice.LANDevice && 
-                    realDeviceData.InternetGatewayDevice.LANDevice['1'] && 
-                    realDeviceData.InternetGatewayDevice.LANDevice['1'].Hosts && 
-                    realDeviceData.InternetGatewayDevice.LANDevice['1'].Hosts.Host) {
-                        
-                    console.log('Data host ditemukan di respons GenieACS!');
-                    const hosts = realDeviceData.InternetGatewayDevice.LANDevice['1'].Hosts.Host;
-                    
-                    // Proses data host
-                    for (const index in hosts) {
-                        if (!isNaN(index)) { // Hanya proses indeks numerik
-                            const host = hosts[index];
-                            
-                            if (host) {
-                                const lastSeen = host.X_BROADCOM_COM_LastActive?._value || 
-                                                host.LastActive?._value || 
-                                                new Date().toISOString();
-                                               
-                                const isActive = new Date() - new Date(lastSeen) < (60 * 60 * 1000); // 1 jam
-                                
-                                connectedUsers.push({
-                                    hostName: host.HostName?._value || '(tidak diketahui)',
-                                    ipAddress: host.IPAddress?._value || '-',
-                                    macAddress: host.MACAddress?._value || '-',
-                                    interfaceType: host.InterfaceType?._value || '-',
-                                    activeStatus: isActive ? 'Aktif' : 'Tidak Aktif',
-                                    lastConnect: new Date(lastSeen).toLocaleString()
-                                });
-                            }
-                        }
-                    }
-                    
-                    console.log(`Berhasil memproses ${connectedUsers.length} perangkat terhubung dari GenieACS`);
-                    
-                    if (connectedUsers.length > 0) {
-                        usingRealData = true;
-                    }
-                }
-            }
-        } catch (genieacsError) {
-            console.log('Gagal mendapatkan data langsung dari GenieACS:', genieacsError.message);
-        }
-        
-        // Jika tidak bisa mendapatkan data dari GenieACS atau tidak ada perangkat, gunakan data contoh
-        if (connectedUsers.length === 0) {
-            console.log('Tidak ada data dari GenieACS, menggunakan data contoh');
-        
-            // Data contoh yang dibedakan berdasarkan username/nomor HP
-            if (username.includes('081220564761')) {
-                // Data untuk nomor ini
-                connectedUsers = [
-                    { hostName: '(tidak diketahui)', ipAddress: '192.168.1.3', macAddress: 'EE:6D:6D:6F:2A:3D', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'Galaxy-A02', ipAddress: '192.168.1.4', macAddress: '6A:42:9B:E7:42:AE', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'android-963fbb7468a947f', ipAddress: '192.168.1.2', macAddress: '3A:4B:70:81:16:B5', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'OPPO-A31', ipAddress: '192.168.1.10', macAddress: '1C:02:19:05:16:31', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'A04-milik-Iis', ipAddress: '192.168.1.13', macAddress: '02:1B:03:CC:A5:35', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() }
-                ];
-            } 
-            else if (username.includes('081321960111')) {
-                connectedUsers = [
-                    { hostName: 'OPPO-A12', ipAddress: '192.168.100.5', macAddress: '20:64:cb:c8:6e:5d', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'V2026', ipAddress: '192.168.100.4', macAddress: '0e:3e:b0:3c:b6:97', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'android-44b4250144973efb', ipAddress: '192.168.100.133', macAddress: '00:08:22:f8:cf:fb', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() }
-                ];
-            } else if (username.includes('087828060111')) {
-                connectedUsers = [
-                    { hostName: 'android-8a94f5c4d9425b61', ipAddress: '192.168.100.152', macAddress: '00:08:22:88:f4:fb', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'android-33a099bf27710b1a', ipAddress: '192.168.100.111', macAddress: '30:cb:f8:cc:6a:45', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: 'iPhone-Dimas', ipAddress: '192.168.100.50', macAddress: 'a4:83:e7:4e:a2:bc', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() }
-                ];
-            } else {
-                // Jika tidak ada data khusus, buat data generik berdasarkan username
-                const deviceBaseName = username.length >= 4 ? username.substring(0, 4) : 'Dev';
-                const deviceSecondName = username.length >= 9 ? username.substring(5, 9) : 'User';
-                
-                connectedUsers = [
-                    { hostName: `Smartphone-${deviceBaseName}`, ipAddress: '192.168.100.100', macAddress: '00:11:22:33:44:55', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-                    { hostName: `Laptop-${deviceSecondName}`, ipAddress: '192.168.100.101', macAddress: '66:77:88:99:aa:bb', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() }
-                ];
-            }
-        }
-
-        // Kirim respons dengan data yang didapat
-        res.json({ 
-            success: true, 
-            connectedUsers,
-            usingRealData: usingRealData
-        });
-
-        // Background process untuk mencoba mendapatkan data sebenarnya jika kita belum mendapatkannya
-        if (!usingRealData) {
-            (async () => {
-                try {
-                    console.log(`Memulai background task untuk deviceId: ${deviceId}`);
-                    
-                    // URL dan query untuk mendapatkan data host
-                    const encodedDeviceId = encodeURIComponent(deviceId);
-                    const hostTaskUrl = `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`;
-                    
-                    // Buat task untuk mengambil data host sesuai dengan struktur parameter yang benar
-                    await axios.post(hostTaskUrl, {
-                        name: "getParameterValues",
-                        parameterNames: [
-                            "InternetGatewayDevice.LANDevice.1.Hosts.Host.*.HostName",
-                            "InternetGatewayDevice.LANDevice.1.Hosts.Host.*.IPAddress",
-                            "InternetGatewayDevice.LANDevice.1.Hosts.Host.*.MACAddress",
-                            "InternetGatewayDevice.LANDevice.1.Hosts.Host.*.InterfaceType",
-                            "InternetGatewayDevice.LANDevice.1.Hosts.Host.*.Active",
-                            "InternetGatewayDevice.LANDevice.1.Hosts.Host.*.X_BROADCOM_COM_LastActive"
-                        ]
-                    }, {
-                        auth: {
-                            username: process.env.GENIEACS_USERNAME,
-                            password: process.env.GENIEACS_PASSWORD
-                        },
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    }).then(() => {
-                        console.log('Task getParameterValues untuk data host berhasil dibuat');
-                    }).catch(err => {
-                        console.log('Gagal membuat task getParameterValues:', err.message);
-                    });
-                    
-                    // Selanjutnya, juga minta refresh object untuk data host
-                    await axios.post(hostTaskUrl, {
-                        name: "refreshObject",
-                        objectName: "InternetGatewayDevice.LANDevice.1.Hosts"
-                    }, {
-                        auth: {
-                            username: process.env.GENIEACS_USERNAME,
-                            password: process.env.GENIEACS_PASSWORD
-                        },
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    }).then(() => {
-                        console.log('Task refreshObject untuk data host berhasil dibuat');
-                    }).catch(err => {
-                        console.log('Gagal membuat task refreshObject:', err.message);
-                    });
-                    
-                    console.log('Background task selesai');
-                } catch (error) {
-                    console.error('Error pada background task:', error);
-                }
-            })();
-        }
-    } catch (error) {
-        console.error('Error mengambil data perangkat terhubung:', error);
-        
-        // Return data fallback meskipun terjadi error
-        const username = req.session.username || '';
-        const mockData = [
-            { hostName: 'Smartphone', ipAddress: '192.168.1.100', macAddress: 'AA:BB:CC:DD:EE:FF', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() },
-            { hostName: 'Laptop', ipAddress: '192.168.1.101', macAddress: '11:22:33:44:55:66', interfaceType: '802.11', activeStatus: 'Aktif', lastConnect: new Date().toLocaleString() }
-        ];
-        
-        res.json({ 
-            success: true, 
-            connectedUsers: mockData,
-            usingRealData: false
         });
     }
 });
@@ -1326,8 +1050,7 @@ app.post('/refresh-device', async (req, res) => {
         console.error('Refresh device error:', {
             message: error.message,
             status: error.response?.status,
-            data: error.response?.data,
-            url: error.config?.url
+            data: error.response?.data
         });
         
         res.status(500).json({ 
@@ -1356,7 +1079,7 @@ app.post('/admin/refresh-device/:deviceId', async (req, res) => {
 
         // Construct GenieACS URLs
         const baseUrl = process.env.GENIEACS_URL.replace(/\/$/, ''); // Remove trailing slash if exists
-        const refreshUrl = `${baseUrl}/devices/${originalDeviceId}/tasks`;
+        const refreshUrl = `${baseUrl}/devices/${originalDeviceId}/tasks?connection_request`;
 
         console.log('Refresh URL:', refreshUrl);
 
@@ -1459,30 +1182,15 @@ app.post('/admin/refresh-all', async (req, res) => {
 
         const refreshPromises = response.data.map(async (device) => {
             try {
-                // Encode device ID properly for the query
-                const encodedQuery = encodeURIComponent(JSON.stringify({ "_id": device._id }));
-                console.log('Searching device with query:', encodedQuery);
-
-                // Get current tags using GenieACS query API
-                const deviceResponse = await axios.get(`${process.env.GENIEACS_URL}/devices/?query=${encodedQuery}`, {
-                    auth: {
-                        username: process.env.GENIEACS_USERNAME,
-                        password: process.env.GENIEACS_PASSWORD
-                    }
+                // Encode device ID properly for URL
+                const encodedDeviceId = encodeURIComponent(device._id);
+                console.log('Processing device:', {
+                    original: device._id,
+                    encoded: encodedDeviceId
                 });
 
-                console.log('GenieACS response:', deviceResponse.data);
-
-                if (!deviceResponse.data || !deviceResponse.data.length) {
-                    return { deviceId: device._id, success: false, error: 'Device not found' };
-                }
-
-                const currentDevice = deviceResponse.data[0];
-                const encodedDeviceId = encodeURIComponent(currentDevice._id);
-                console.log('Encoded deviceId:', encodedDeviceId);
-
                 // Send refresh task
-                const taskResponse = await axios({
+                const result = await axios({
                     method: 'POST',
                     url: `${process.env.GENIEACS_URL}/devices/${encodedDeviceId}/tasks`,
                     data: {
@@ -1498,16 +1206,14 @@ app.post('/admin/refresh-all', async (req, res) => {
                     }
                 });
 
-                console.log('Task response:', {
-                    status: taskResponse.status,
-                    data: taskResponse.data,
-                    url: taskResponse.config.url
+                console.log('Device refresh result:', {
+                    deviceId: device._id,
+                    status: result.status,
+                    data: result.data,
+                    url: result.config.url
                 });
 
-                // Wait for tasks to be processed
-                await new Promise(resolve => setTimeout(resolve, 3000));
-
-                return { deviceId: currentDevice._id, success: true };
+                return { deviceId: device._id, success: true };
             } catch (error) {
                 console.error('Error refreshing device:', error);
                 return { deviceId: device._id, success: false, error: error.message };
@@ -1583,10 +1289,6 @@ app.post('/activate-pro', (req, res) => {
             const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
             proStatus.isPro = true;
             proStatus.activatedAt = new Date().toISOString();
-            
-            // Tambahkan versi
-            proStatus.version = REQUIRED_ACTIVATION_VERSION;
-            
             fs.writeFileSync(PRO_STATUS_FILE, JSON.stringify(proStatus));
             res.json({ success: true });
         } catch (error) {
@@ -1613,16 +1315,6 @@ app.get('/check-pro-status', (req, res) => {
     
     try {
         const proStatus = JSON.parse(fs.readFileSync(PRO_STATUS_FILE));
-        
-        // Periksa versi file (minimal harus versi 2.0)
-        if (!proStatus.version || proStatus.version !== REQUIRED_ACTIVATION_VERSION) {
-            return res.json({ 
-                isPro: false, 
-                expired: true,
-                message: 'Versi file aktivasi tidak valid. Silakan hubungi administrator untuk mendapatkan file aktivasi terbaru.'
-            });
-        }
-        
         res.json({ isPro: proStatus.isPro || false });
     } catch (error) {
         console.error('Error saat memeriksa status PRO:', error);
@@ -1896,109 +1588,6 @@ app.post('/admin/test-gateway', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Gagal test gateway: ' + error.message 
-        });
-    }
-});
-
-// Endpoint untuk get server settings (GenieACS dan admin credentials)
-app.get('/admin/get-server-settings', async (req, res) => {
-    if (!req.session.isAdmin) {
-        return res.status(403).json({ success: false, message: 'Tidak diizinkan' });
-    }
-
-    try {
-        // Baca file .env
-        const envContent = fs.readFileSync('.env', 'utf8');
-        
-        // Parse .env file untuk mendapatkan nilai yang dibutuhkan
-        const settings = {};
-        const envLines = envContent.split('\n');
-        
-        for (const line of envLines) {
-            // Skip komentar dan line kosong
-            if (line.trim().startsWith('#') || line.trim() === '') {
-                continue;
-            }
-            
-            const [key, value] = line.split('=');
-            if (key && value) {
-                settings[key.trim()] = value.trim();
-            }
-        }
-        
-        res.json({ 
-            success: true, 
-            settings: {
-                GENIEACS_URL: settings.GENIEACS_URL || '',
-                GENIEACS_USERNAME: settings.GENIEACS_USERNAME || '',
-                GENIEACS_PASSWORD: settings.GENIEACS_PASSWORD || '',
-                ADMIN_USERNAME: settings.ADMIN_USERNAME || '',
-                ADMIN_PASSWORD: settings.ADMIN_PASSWORD || ''
-            }
-        });
-    } catch (error) {
-        console.error('Error reading server settings:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Gagal membaca pengaturan server: ' + error.message 
-        });
-    }
-});
-
-// Endpoint untuk save server settings (GenieACS dan admin credentials)
-app.post('/admin/save-server-settings', async (req, res) => {
-    if (!req.session.isAdmin) {
-        return res.status(403).json({ success: false, message: 'Tidak diizinkan' });
-    }
-
-    try {
-        const { genieacsUrl, genieacsUsername, genieacsPassword, adminUsername, adminPassword } = req.body;
-        
-        // Validasi
-        if (!genieacsUrl || !genieacsUsername || !genieacsPassword || !adminUsername || !adminPassword) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Semua field harus diisi' 
-            });
-        }
-        
-        // Baca file .env yang ada
-        let envContent = fs.readFileSync('.env', 'utf8');
-        
-        // Update nilai untuk variabel yang ada
-        const updateEnvVariable = (variable, value) => {
-            const regex = new RegExp(`${variable}=.*`, 'g');
-            if (envContent.match(regex)) {
-                envContent = envContent.replace(regex, `${variable}=${value}`);
-            } else {
-                // Jika variabel tidak ditemukan, tambahkan di akhir file
-                envContent += `\n${variable}=${value}`;
-            }
-        };
-        
-        // Update semua variabel
-        updateEnvVariable('GENIEACS_URL', genieacsUrl);
-        updateEnvVariable('GENIEACS_USERNAME', genieacsUsername);
-        updateEnvVariable('GENIEACS_PASSWORD', genieacsPassword);
-        updateEnvVariable('ADMIN_USERNAME', adminUsername);
-        updateEnvVariable('ADMIN_PASSWORD', adminPassword);
-        
-        // Simpan kembali file .env
-        fs.writeFileSync('.env', envContent);
-        
-        // Update nilai di process.env
-        process.env.GENIEACS_URL = genieacsUrl;
-        process.env.GENIEACS_USERNAME = genieacsUsername;
-        process.env.GENIEACS_PASSWORD = genieacsPassword;
-        process.env.ADMIN_USERNAME = adminUsername;
-        process.env.ADMIN_PASSWORD = adminPassword;
-        
-        res.json({ success: true, message: 'Pengaturan server berhasil disimpan' });
-    } catch (error) {
-        console.error('Error saving server settings:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Gagal menyimpan pengaturan server: ' + error.message 
         });
     }
 });
